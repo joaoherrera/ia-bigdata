@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"editor.formatOnSave": true
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.python",
+			"kevinrose.vsc-python-indent",
+			"njpwerner.autodocstring",
+			"ms-azuretools.vscode-docker",
+			"ms-vscode-remote.remote-containers",
+			"redhat.vscode-yaml"
+		]
+	}
+}
