@@ -132,3 +132,6 @@ dmypy.json
 
 # datasets folder
 datasets/
+
+# vscode folder
+.vscode

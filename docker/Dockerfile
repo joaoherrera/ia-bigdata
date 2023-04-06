@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
+FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
 
 # Image parameters
 ARG DEBIAN_FRONTEND=noninteractive
@@ -24,6 +24,9 @@ RUN apt-get update -y && apt-get install -y \
     libavcodec-dev \
     libavformat-dev \
     libswscale-dev \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
     curl \
     git \
     unzip \
@@ -41,11 +44,9 @@ RUN apt-get update -y && apt-get install -y \
 COPY requirements.txt .
 
 RUN python3 -m pip install pip --upgrade && \
+    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
     pip3 install -r requirements.txt && \
     rm requirements.txt
-
-# Install Detectron2 
-RUN python3 -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
 
 # ~ Setup user
 RUN useradd -m ${USER} --uid=${UID} && echo "${USER}:${PW}" | chpasswd
