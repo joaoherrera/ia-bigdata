@@ -7,12 +7,13 @@
 
 
 import torch
+from torch.utils.data import DataLoader, random_split
 
-from src.screw_analysis.dataset.dataset import CocoDataset
-from src.screw_analysis.engine.models import DummyClassifier
-from src.screw_analysis.engine.trainer import SupervisedTrainer
-from torch.utils.data import random_split, DataLoader
-from src.screw_analysis.dataset.preprocessing import CocoPreprocessing, OrderedCompose
+from src.dataset.augmentations import CocoAugmentations
+from src.dataset.dataset import CocoDataset
+from src.dataset.preprocessing import CocoPreprocessing, OrderedCompose
+from src.engine.models import DummyClassifier
+from src.engine.trainer import SupervisedTrainer
 
 
 def main():
@@ -22,7 +23,15 @@ def main():
 
     model = DummyClassifier()
     preprocessing_funcs = OrderedCompose([CocoPreprocessing.crop])
-    dataset = CocoDataset(dataset_images_directory, dataset_annotations_file, preprocessing=preprocessing_funcs)
+    augmentations_funcs = OrderedCompose([CocoAugmentations.augment])
+
+    dataset = CocoDataset(
+        dataset_images_directory,
+        dataset_annotations_file,
+        preprocessing=preprocessing_funcs,
+        augmentations=augmentations_funcs,
+    )
+
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     loss = torch.nn.BCELoss()
 
@@ -31,7 +40,7 @@ def main():
     test_subset = DataLoader(test_subset, 32, shuffle=True)
 
     trainer = SupervisedTrainer(torch.device("cuda:0"), model)
-    trainer.fit(train_subset, test_subset, optimizer, loss, loss)
+    trainer.fit(train_subset, test_subset, optimizer, loss, loss, 10)
 
 
 if __name__ == "__main__":

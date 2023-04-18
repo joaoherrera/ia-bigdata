@@ -1,4 +1,3 @@
-import math
 import os
 from dataclasses import dataclass
 from typing import Any, Callable, Tuple
@@ -8,7 +7,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from src.screw_analysis.dataset.annotations import COCOAnnotations
+from src.dataset.annotations import COCOAnnotations
 
 
 class DatasetUtils:
@@ -35,7 +34,7 @@ class CocoDataset(Dataset):
     data_annotation_path: str
     augmentations: Callable = None
     preprocessing: Callable = None
-    seed: Any = 2022
+    seed: Any = 2023
 
     def __post_init__(self) -> None:
         torch.manual_seed(self.seed)

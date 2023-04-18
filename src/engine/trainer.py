@@ -6,8 +6,6 @@ import torch
 
 
 class SupervisedTrainer:
-    EPOCHS = 100
-
     def __init__(self, device, model):
         self.device = device
         self.model = model
@@ -60,8 +58,8 @@ class SupervisedTrainer:
                 print(f"Validation loss {coef_value}")
         return np.mean(coef_validation)
 
-    def fit(self, training_dataset, validation_dataset, optimizer, loss_func, coef_func):
-        for epoch in range(self.EPOCHS):
+    def fit(self, training_dataset, validation_dataset, optimizer, loss_func, coef_func, epochs):
+        for epoch in range(epochs):
             print(f"Epoch {epoch}")
 
             loss_training = self.train(training_dataset, optimizer, loss_func)
