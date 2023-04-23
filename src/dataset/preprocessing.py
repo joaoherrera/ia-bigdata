@@ -1,6 +1,6 @@
-from typing import Any, Callable, Dict, List, Tuple
+from ctypes import ArgumentError
+from typing import Any, Callable, List, Tuple
 
-import albumentations
 import numpy as np
 
 
@@ -17,6 +17,12 @@ class OrderedCompose:
 
 class CocoPreprocessing:
     @staticmethod
-    def crop(image: np.ndarray, annotations: dict) -> Tuple[np.ndarray, dict]:
+    def crop(image: np.ndarray, annotations: dict, format="channel_first") -> Tuple[np.ndarray, dict]:
         bbox = np.array(annotations["bbox"], dtype=np.int32)
-        return image[:, bbox[1] : (bbox[1] + bbox[3]), bbox[0] : (bbox[0] + bbox[2])], annotations
+
+        if format == "channel_first":
+            return image[:, bbox[1] : (bbox[1] + bbox[3]), bbox[0] : (bbox[0] + bbox[2])], annotations
+        elif format == "channel_last":
+            return image[bbox[1] : (bbox[1] + bbox[3]), bbox[0] : (bbox[0] + bbox[2]), :], annotations
+        else:
+            raise ArgumentError(f"format {format} do not exist.")

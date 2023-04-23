@@ -9,7 +9,7 @@
 import torch
 from torch.utils.data import DataLoader, random_split
 
-from src.dataset.augmentations import CocoAugmentations
+from src.dataset.augmentations import ScrewAugmentations
 from src.dataset.dataset import CocoDataset
 from src.dataset.preprocessing import CocoPreprocessing, OrderedCompose
 from src.engine.models import DummyClassifier
@@ -22,13 +22,11 @@ def main():
     dataset_annotations_file = f"{dataset_root}/annotations/annotations.json"
 
     model = DummyClassifier()
-    preprocessing_funcs = OrderedCompose([CocoPreprocessing.crop])
-    augmentations_funcs = OrderedCompose([CocoAugmentations.augment])
+    augmentations_funcs = OrderedCompose([ScrewAugmentations.augment])
 
     dataset = CocoDataset(
         dataset_images_directory,
         dataset_annotations_file,
-        preprocessing=preprocessing_funcs,
         augmentations=augmentations_funcs,
     )
 
