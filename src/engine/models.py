@@ -9,4 +9,9 @@ class DummyClassifier(torch.nn.Module):
         self.model.fc = torch.nn.Sequential(torch.nn.Linear(self.model.fc.in_features, 1))
 
     def forward(self, x):
-        return torch.squeeze(torch.sigmoid(self.model(x)))
+        probability = self.model(x)
+
+        if probability.dim() > 1:
+            probability = torch.reshape(probability, (-1,))
+
+        return probability

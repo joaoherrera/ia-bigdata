@@ -1,14 +1,14 @@
-from argparse import ArgumentParser
 import os
+from argparse import ArgumentParser
+from copy import copy
 from typing import Dict
 
+import cv2
 from torch.utils import data
 
-from src.dataset.utils import DatasetCustomizer
 from src.dataset.annotations import COCOAnnotations
 from src.dataset.preprocessing import CocoPreprocessing
-import cv2
-from copy import copy
+from src.dataset.utils import DatasetCustomizer
 
 
 def main(args: Dict) -> None:
@@ -41,8 +41,8 @@ def main(args: Dict) -> None:
             print(f"Image {image['file_name']} not found. Skipping...")
             continue
 
-        for annotation in annotations_group[image["id"]]:
-            patch_name = f"{image_name}_{annotation['id']}.jpg"
+        for i, annotation in enumerate(annotations_group[image["id"]]):
+            patch_name = f"{image_name}_{i + 1}.jpg"
             patch_image, __ = CocoPreprocessing.crop(im, annotation, format="channel_last")
             output_patch_path = os.path.join(output_directory, patch_name)
 

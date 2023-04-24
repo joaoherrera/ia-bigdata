@@ -14,11 +14,16 @@ class DatasetUtils:
     """Base operations for datasets."""
 
     @staticmethod
-    def read_image(image_path: str, read_mode: int = cv2.IMREAD_COLOR) -> np.ndarray:
+    def read_image(image_path: str, read_mode: int = cv2.IMREAD_COLOR, channel_first: bool = False) -> np.ndarray:
         if not os.path.exists(image_path):
-            raise ValueError("Path does not exist.")
+            raise ValueError(f"Path {image_path} does not exist.")
 
-        return cv2.imread(image_path, read_mode).transpose(2, 0, 1)
+        image = cv2.imread(image_path, read_mode)
+
+        if channel_first:
+            return image.transpose(2, 0, 1)
+        else:
+            return image
 
     @staticmethod
     def read_paths(directory_path: str) -> list[str]:
@@ -50,7 +55,7 @@ class CocoDataset(Dataset):
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         annotation = self.annotations[idx]
         image_data = self.images[annotation["image_id"]]
-        image_path = os.path.join(self.data_directory_path, image_data["file_name"])
+        image_path = os.path.join(self.data_directory_path, image_data[0]["file_name"])
         image = DatasetUtils.read_image(image_path)
 
         # apply preprocessing
@@ -61,8 +66,8 @@ class CocoDataset(Dataset):
         if self.augmentations is not None:
             image, annotation = self.augmentations(image, annotation)
 
-        image = torch.tensor(image, dtype=torch.float32)
-        category = torch.tensor(self.categories[annotation["category_id"]]["id"] - 1, dtype=torch.float32)
+        image = torch.tensor(image.transpose(2, 0, 1), dtype=torch.float32)
+        category = torch.tensor(self.categories[annotation["category_id"]][0]["id"] - 1, dtype=torch.float32)
 
         return image, category
 

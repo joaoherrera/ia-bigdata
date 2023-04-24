@@ -12,7 +12,7 @@ class SupervisedTrainer:
 
         self.model.to(self.device)  # Load model in the GPU
 
-    def train(self, dataset, optimizer, loss_func):
+    def train(self, dataset, optimizer, loss_func, verbose=False):
         loss_training = []
 
         # Set module status to training. Implemented in torch.nn.Module
@@ -34,10 +34,12 @@ class SupervisedTrainer:
                 loss_value = loss.item()
                 loss_training.append(loss_value)
 
-                print(f"Training loss: {loss_value}")
+                if verbose:
+                    print(f"Training loss: {loss_value}")
+
         return np.mean(loss_training)
 
-    def evaluate(self, dataset, coef_func):
+    def evaluate(self, dataset, coef_func, verbose=False):
         coef_validation = []
 
         # Set module status to evalutation. Implemented in torch.nn.Module
@@ -55,15 +57,17 @@ class SupervisedTrainer:
                 coef_value = coef.item()
                 coef_validation.append(coef_value)
 
-                print(f"Validation loss {coef_value}")
+                if verbose:
+                    print(f"Validation loss {coef_value}")
+
         return np.mean(coef_validation)
 
-    def fit(self, training_dataset, validation_dataset, optimizer, loss_func, coef_func, epochs):
+    def fit(self, training_dataset, validation_dataset, optimizer, loss_func, coef_func, epochs, verbose=False):
         for epoch in range(epochs):
             print(f"Epoch {epoch}")
 
-            loss_training = self.train(training_dataset, optimizer, loss_func)
-            coef_evalutation = self.evaluate(validation_dataset, coef_func)
+            loss_training = self.train(training_dataset, optimizer, loss_func, verbose)
+            coef_evalutation = self.evaluate(validation_dataset, coef_func, verbose)
 
             print(f"Loss training: {loss_training}")
             print(f"Loss validation: {coef_evalutation}")

@@ -9,17 +9,17 @@ class ScrewAugmentations:
         [
             albumentations.RandomRotate90(
                 always_apply=False,
-                p=1.0,
+                p=0.5,
             ),
             albumentations.Downscale(
                 always_apply=False,
-                p=1.0,
+                p=0.5,
                 scale_min=0.87,
                 scale_max=0.99,
             ),
             albumentations.GridDistortion(
                 always_apply=False,
-                p=1.0,
+                p=0.5,
                 num_steps=1,
                 distort_limit=(-0.12, 0.07),
                 interpolation=0,
@@ -30,14 +30,14 @@ class ScrewAugmentations:
             ),
             albumentations.RandomBrightnessContrast(
                 always_apply=False,
-                p=1.0,
+                p=0.5,
                 brightness_limit=(-0.16, 0.52),
                 contrast_limit=(-0.3, 0.2),
                 brightness_by_max=True,
             ),
             albumentations.ShiftScaleRotate(
                 always_apply=False,
-                p=1.0,
+                p=0.5,
                 shift_limit_x=(-0.01, -0.01),
                 shift_limit_y=(-0.01, -0.01),
                 scale_limit=(-0.07999999999999996, 0.8599999999999999),
@@ -50,7 +50,7 @@ class ScrewAugmentations:
             ),
             albumentations.HueSaturationValue(
                 always_apply=False,
-                p=1.0,
+                p=0.5,
                 hue_shift_limit=(-30, 30),
                 sat_shift_limit=(-30, 30),
                 val_shift_limit=(-30, 30),
@@ -60,4 +60,4 @@ class ScrewAugmentations:
 
     @classmethod
     def augment(cls, image: np.ndarray, annotations: dict) -> Tuple[np.ndarray, dict]:
-        return cls.transformer(image=image), annotations
+        return cls.transformer(image=image)["image"], annotations
