@@ -6,9 +6,10 @@ import torch
 
 
 class SupervisedTrainer:
-    def __init__(self, device, model):
+    def __init__(self, device, model, recorder=None):
         self.device = device
         self.model = model
+        self.recorder = recorder
 
         self.model.to(self.device)  # Load model in the GPU
 
@@ -71,3 +72,8 @@ class SupervisedTrainer:
 
             print(f"Loss training: {loss_training}")
             print(f"Loss validation: {coef_evalutation}")
+
+            if self.recorder:
+                self.recorder.record_scalar("training loss", loss_training, epoch)
+                self.recorder.record_scalar("validation loss", coef_evalutation, epoch)
+                self.recorder.close()
