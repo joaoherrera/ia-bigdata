@@ -5,7 +5,7 @@ import torchvision
 class DummyClassifier(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1)
+        self.model = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.IMAGENET1K_V2)
         self.model.fc = torch.nn.Sequential(torch.nn.Linear(self.model.fc.in_features, 1))
 
     def forward(self, x):

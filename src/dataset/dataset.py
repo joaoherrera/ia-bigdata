@@ -1,5 +1,9 @@
+import copy
 import os
+from abc import ABC, abstractmethod
+from ctypes import ArgumentError
 from dataclasses import dataclass
+from operator import index
 from typing import Any, Callable, Tuple
 
 import cv2
@@ -33,17 +37,38 @@ class DatasetUtils:
         return os.listdir(directory_path)
 
 
+class BaseDataset(ABC):
+    def __init__(self) -> None:
+        self.data = None
+
+    def is_empty(self) -> bool:
+        return self.data is None or len(self.data) == 0
+
+    def set_data(self, data) -> None:
+        self.data = data
+
+    def get_data(self) -> Any:
+        return self.data
+
+
+class MutableDataset(BaseDataset, ABC):
+    @abstractmethod
+    def split(self) -> Tuple[Any, Any]:
+        raise NotImplementedError()
+
+
 @dataclass
-class CocoDataset(Dataset):
+class CocoDataset(Dataset, MutableDataset):
     data_directory_path: str
     data_annotation_path: str
     augmentations: Callable = None
     preprocessing: Callable = None
-    seed: Any = 2023
+    seed: Any | None = None
 
     def __post_init__(self) -> None:
-        torch.manual_seed(self.seed)
-        np.random.seed(self.seed)
+        if self.seed is not None:
+            torch.manual_seed(self.seed)
+            np.random.seed(self.seed)
 
         super().__init__()
 
@@ -73,6 +98,34 @@ class CocoDataset(Dataset):
 
     def __len__(self) -> int:
         return len(self.annotations)
+
+    def split(self, *percentages, random: bool) -> Tuple[Any, ...]:
+        assert np.sum([*percentages]) == 1, "Summation of percentages must be equal to 1."
+
+        subsets = []
+        all_images = list(self.images.keys())
+        total_images = len(all_images)
+        subset_sizes = [int(total_images * perc) for perc in percentages]
+
+        if random:
+            np.random.shuffle(all_images)
+
+        for ss in subset_sizes:
+            subset = copy.deepcopy(self)
+            indexes = all_images[:ss]
+
+            subset.tree.data["images"] = [self.images[i][0] for i in indexes]
+            subset.images = COCOAnnotations.to_dict(subset.tree.data["images"], "id")
+
+            image_annotations = COCOAnnotations.to_dict(subset.tree.data["annotations"], "image_id")
+            subset.tree.data["annotations"] = [image_annotations[image_id] for image_id in subset.images.keys()]
+            subset.tree.data["annotations"] = np.array(subset.tree.data["annotations"]).flatten().tolist()
+            subset.annotations = subset.tree.data.get("annotations")
+
+            subsets.append(subset)
+            all_images = all_images[ss:]
+
+        return tuple(subsets)
 
     @classmethod
     def dataloader(cls, batch_size: int, shuffle: bool) -> DataLoader:

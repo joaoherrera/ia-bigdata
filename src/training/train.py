@@ -37,7 +37,8 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     loss = torch.nn.BCEWithLogitsLoss()
 
-    train_subset, test_subset = random_split(dataset, lengths=[0.8, 0.2])
+    train_subset, test_subset = dataset.split(0.8, 0.2, random=True)
+
     train_subset = DataLoader(train_subset, 32, shuffle=True)
     test_subset = DataLoader(test_subset, 32, shuffle=True)
 
