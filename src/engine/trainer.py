@@ -1,6 +1,8 @@
 """ A basic model for machine learning.
 """
 
+import math
+
 import numpy as np
 import torch
 
@@ -10,6 +12,7 @@ class SupervisedTrainer:
         self.device = device
         self.model = model
         self.recorder = recorder
+        self.best_loss = 1e20
 
         self.model.to(self.device)  # Load model in the GPU
 
@@ -76,4 +79,11 @@ class SupervisedTrainer:
             if self.recorder:
                 self.recorder.record_scalar("training loss", loss_training, epoch)
                 self.recorder.record_scalar("validation loss", coef_evalutation, epoch)
-                self.recorder.close()
+
+        if self.recorder:
+            self.recorder.close()
+
+        # Save checkpoint.
+        if coef_evalutation < self.best_loss:
+            self.best_loss = coef_evalutation
+            self.model.save()

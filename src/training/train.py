@@ -2,10 +2,11 @@
 # Date: 2023-04-01                                                                                          #
 # Author: Joao Herrera                                                                                      #
 #                                                                                                           #
-# Script to train an instance segmentation model of screws.                                           #
+# Script to train a classifier model of screws.                                                             #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 
+import os
 from datetime import datetime
 
 import torch
@@ -14,7 +15,7 @@ from torch.utils.data import DataLoader, random_split
 from src.dataset.augmentations import ScrewAugmentations
 from src.dataset.dataset import CocoDataset
 from src.dataset.preprocessing import OrderedCompose
-from src.engine.models import DummyClassifier
+from src.engine.models import ScrewClassifier
 from src.engine.trainer import SupervisedTrainer
 from src.training.tensorboard import TrainingRecorder
 
@@ -24,8 +25,9 @@ def main():
     dataset_images_directory = f"{dataset_root}/images"
     dataset_annotations_file = f"{dataset_root}/annotations/annotations.json"
     recorder = TrainingRecorder(f"{dataset_root}/experiments/training_{datetime.now().__str__()}")
+    checkpoint_path = os.path.join(recorder.summary_filepath, "checkpoint.pth")
 
-    model = DummyClassifier()
+    model = ScrewClassifier(checkpoint_path)
     augmentations_funcs = OrderedCompose([ScrewAugmentations.augment])
 
     dataset = CocoDataset(
@@ -43,7 +45,7 @@ def main():
     test_subset = DataLoader(test_subset, 32, shuffle=True)
 
     trainer = SupervisedTrainer(torch.device("cuda:0"), model, recorder)
-    trainer.fit(train_subset, train_subset, optimizer, loss, loss, 100, verbose=False)
+    trainer.fit(train_subset, train_subset, optimizer, loss, loss, 500, verbose=False)
 
 
 if __name__ == "__main__":
