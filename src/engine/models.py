@@ -66,5 +66,14 @@ class SqueezeNetClassifier(CustomClassifier):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.model.forward(x)
+        return x.flatten()
 
+
+class MobileNetClassifier(CustomClassifier):
+    def __init__(self, model_path: str) -> None:
+        super().__init__(model_path)
+        self.model = torchvision.models.mobilenet_v3_small(num_classes=1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.model.forward(x)
         return x.flatten()
