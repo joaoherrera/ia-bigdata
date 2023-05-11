@@ -5,12 +5,15 @@
 # A class representation of an annotation file.                                                             #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
+import itertools
+import json
+import os
+import random
 from ctypes import ArgumentError
 from typing import Dict, List
-import json
+
+import numpy as np
 import pandas as pd
-import itertools
-import os
 
 
 class JSONAnnotations:
@@ -28,6 +31,8 @@ class JSONAnnotations:
             raise ValueError("Invalid key")
 
         data_dictionary = {}
+        data = sorted(data.copy(), key=lambda x: x[key_type])
+
         for key, group in itertools.groupby(data, lambda x: x[key_type]):
             data_dictionary[key] = list(group)
 
@@ -51,11 +56,19 @@ class JSONAnnotations:
 class COCOAnnotations(JSONAnnotations):
     """Handle coco-like annotations."""
 
-    def __init__(self, filepath: str = None) -> None:
+    def __init__(self, filepath: str = None, balancing_strategy: str = None) -> None:
         self.filepath = filepath
 
         if self.filepath is not None and os.path.isfile(self.filepath):
             self.load()
+
+        if balancing_strategy is not None:
+            if balancing_strategy == "oversampling":
+                self.apply_oversampling(inplace=True)
+            elif balancing_strategy == "undersampling":
+                self.apply_undersampling(inplace=True)
+            else:
+                raise ArgumentError(f"Invalid balancing strategy: {balancing_strategy}")
 
     @staticmethod
     def from_data(annotations: Dict) -> "COCOAnnotations":
@@ -81,6 +94,46 @@ class COCOAnnotations(JSONAnnotations):
             else:
                 raise ArgumentError("Need a path for a JSON file as output.")
         self.save_file(self, output_path)
+
+    def apply_oversampling(self, inplace=False, seed=None) -> List[dict] | None:
+        if seed is not None:
+            random.seed(seed)
+
+        oversampled = []
+
+        annotations_category = self.to_dict(self.data["annotations"], "category_id")
+        categories_summary = {id: len(anns) for id, anns in annotations_category.items()}
+        categories_max = max(categories_summary.values())
+
+        for category_id, n_annotations in categories_summary.items():
+            if n_annotations < categories_max:
+                n_random = random.choices(annotations_category[category_id], k=(categories_max - n_annotations))
+                oversampled.extend(n_random)
+
+        if inplace:
+            self.data["annotations"].extend(oversampled)
+        else:
+            return oversampled
+
+    def apply_undersampling(self, inplace=False, seed=None) -> List[dict] | None:
+        if seed is not None:
+            random.seed(seed)
+
+        undersampled = []
+
+        annotations_category = self.to_dict(self.data["annotations"], "category_id")
+        categories_summary = {id: len(anns) for id, anns in annotations_category.items()}
+        categories_min = min(categories_summary.values())
+
+        for category_id, n_annotations in categories_summary.items():
+            if n_annotations > categories_min:
+                n_random = random.choices(annotations_category[category_id], k=(n_annotations - categories_min))
+                undersampled.extend(n_random)
+
+        if inplace:
+            self.data["annotations"].extend(undersampled)
+        else:
+            return undersampled
 
     @staticmethod
     def create_image_instance(id: int, file_name: str, width: int, height: int, **kwargs) -> Dict:

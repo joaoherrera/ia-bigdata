@@ -64,6 +64,7 @@ class CocoDataset(Dataset, MutableDataset):
     augmentations: Callable = None
     preprocessing: Callable = None
     seed: Any | None = None
+    balancing_strategy: str | None = None
 
     def __post_init__(self) -> None:
         if self.seed is not None:
@@ -72,7 +73,7 @@ class CocoDataset(Dataset, MutableDataset):
 
         super().__init__()
 
-        self.tree = COCOAnnotations(self.data_annotation_path)
+        self.tree = COCOAnnotations(self.data_annotation_path, self.balancing_strategy)
         self.images = COCOAnnotations.to_dict(self.tree.data["images"], "id")
         self.categories = COCOAnnotations.to_dict(self.tree.data["categories"], "id")
         self.annotations = self.tree.data.get("annotations")
@@ -118,7 +119,7 @@ class CocoDataset(Dataset, MutableDataset):
             subset.images = COCOAnnotations.to_dict(subset.tree.data["images"], "id")
 
             image_annotations = COCOAnnotations.to_dict(subset.tree.data["annotations"], "image_id")
-            subset.tree.data["annotations"] = [image_annotations[image_id] for image_id in subset.images.keys()]
+            subset.tree.data["annotations"] = [image_annotations[image_id][0] for image_id in subset.images.keys()]
             subset.tree.data["annotations"] = np.array(subset.tree.data["annotations"]).flatten().tolist()
             subset.annotations = subset.tree.data.get("annotations")
 
