@@ -27,8 +27,8 @@ def main():
     recorder = TrainingRecorder(f"{dataset_root}/experiments/training_{datetime.now().__str__()}")
     checkpoint_path = os.path.join(recorder.summary_filepath, "checkpoint.pth")
 
-    model = MobileNetClassifier(checkpoint_path)
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=0.0001)
+    model = ResNetClassifier(checkpoint_path)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss = torch.nn.BCEWithLogitsLoss()
 
     augmentations_funcs = OrderedCompose([ScrewAugmentations.augment])
@@ -36,18 +36,19 @@ def main():
     dataset = CocoDataset(
         dataset_images_directory,
         dataset_annotations_file,
-        augmentations=augmentations_funcs,
-        balancing_strategy="oversampling",
+        # augmentations=augmentations_funcs,
+        # balancing_strategy="oversampling",
+        seed=2023
     )
 
     train_subset, test_subset = dataset.split(0.8, 0.2, random=True)
     test_subset.augmentations = None
 
-    train_subset = DataLoader(train_subset, 32, shuffle=True)
-    test_subset = DataLoader(test_subset, 32, shuffle=True)
-
+    train_subset = DataLoader(train_subset, 16, shuffle=True)
+    test_subset = DataLoader(test_subset, 16, shuffle=True)
+    
     trainer = SupervisedTrainer(torch.device("cuda:0"), model, recorder)
-    trainer.fit(train_subset, test_subset, optimizer, loss, loss, 300, verbose=False)
+    trainer.fit(train_subset, test_subset, optimizer, loss, loss, 500, verbose=False)
 
 
 if __name__ == "__main__":

@@ -39,9 +39,9 @@ class CustomClassifier(torch.nn.Module):
 class ResNetClassifier(CustomClassifier):
     def __init__(self, model_path: str) -> None:
         super().__init__(model_path)
-        self.model = torchvision.models.resnet152(weights=torchvision.models.ResNet152_Weights.IMAGENET1K_V2)
+        self.model = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.IMAGENET1K_V2)
         self.model.fc = torch.nn.Sequential(torch.nn.Linear(self.model.fc.in_features, 1))
-
+        
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         probability = self.model(x)
 

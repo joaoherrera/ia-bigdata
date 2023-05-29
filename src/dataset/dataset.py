@@ -78,6 +78,8 @@ class CocoDataset(Dataset, MutableDataset):
         self.categories = COCOAnnotations.to_dict(self.tree.data["categories"], "id")
         self.annotations = self.tree.data.get("annotations")
 
+        self.preview_dataset()
+
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         annotation = self.annotations[idx]
         image_data = self.images[annotation["image_id"]]
@@ -127,6 +129,25 @@ class CocoDataset(Dataset, MutableDataset):
             all_images = all_images[ss:]
 
         return tuple(subsets)
+    
+    def preview_dataset(self) -> None:
+        horizontal_bar_length = 100
+        categories_str = [f"{c['id']}: {c['name']}" for c in self.tree.data['categories']]
+
+        print("=" * horizontal_bar_length)
+        print(f"Dataset categories: {categories_str}")
+        print(f"Number of images: {len(self.tree.data['images'])}")
+        print(f"Number of Annotations: {len(self.tree.data['annotations'])}")
+        print("=" * horizontal_bar_length)
+        print("Per-category info:")
+        
+        images_per_category = COCOAnnotations.to_dict(self.tree.data["annotations"], "category_id")
+
+        for c in self.tree.data["categories"]:
+            print(f"Category Label: {c['name']} \t Category ID: {c['id']}")
+            print(f"Instances: {len(images_per_category[c['id']])}")
+        print("=" * horizontal_bar_length)
+        
 
     @classmethod
     def dataloader(cls, batch_size: int, shuffle: bool) -> DataLoader:
