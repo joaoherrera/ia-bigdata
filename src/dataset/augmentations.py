@@ -59,5 +59,5 @@ class ScrewAugmentations:
     )
 
     @classmethod
-    def augment(cls, image: np.ndarray, annotations: dict) -> Tuple[np.ndarray, dict]:
+    def augment(cls, image: np.ndarray, annotations: dict, **kwargs: dict) -> Tuple[np.ndarray, dict]:
         return cls.transformer(image=image)["image"], annotations

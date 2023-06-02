@@ -39,11 +39,12 @@ class CustomClassifier(torch.nn.Module):
 class ResNetClassifier(CustomClassifier):
     def __init__(self, model_path: str) -> None:
         super().__init__(model_path)
-        self.model = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.IMAGENET1K_V2)
+        self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1)
         self.model.fc = torch.nn.Sequential(torch.nn.Linear(self.model.fc.in_features, 1))
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         probability = self.model(x)
+        probability = torch.sigmoid(probability)
 
         if probability.dim() > 1:
             probability = torch.reshape(probability, (-1,))
@@ -66,6 +67,7 @@ class SqueezeNetClassifier(CustomClassifier):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.model.forward(x)
+        x = torch.nn.functional.softmax(x, dim=0)
         return x.flatten()
 
 
