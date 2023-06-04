@@ -69,7 +69,7 @@ class SupervisedTrainer:
 
         return loss_validation / n
 
-    def fit(self, training_dataset, validation_dataset, optimizer, train_loss, validation_loss, epochs, verbose=False):       
+    def fit(self, training_dataset, validation_dataset, optimizer, train_loss, validation_loss, epochs, verbose=False):
         for epoch in range(epochs):
             print(f"Epoch {epoch}")
 
