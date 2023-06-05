@@ -21,7 +21,7 @@ from src.training.tensorboard import TrainingRecorder
 
 
 def main():
-    dataset_root = "/home/joaoherrera/server/datasets/screws"
+    dataset_root = "/home/joaoherrera/server/datasets/lemons"
     dataset_images_directory = f"{dataset_root}/images"
     dataset_annotations_file = f"{dataset_root}/annotations/annotations.json"
     dataset_training_annotation_file = f"{dataset_root}/annotations/training_annotations.json"
