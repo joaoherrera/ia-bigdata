@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader, random_split
 from src.dataset.augmentations import ScrewAugmentations
 from src.dataset.dataset import CocoDataset, DatasetUtils
 from src.dataset.preprocessing import OrderedCompose, CocoPreprocessing
-from src.engine.models import MobileNetClassifier, ResNetClassifier, SqueezeNetClassifier
+from src.engine.classifiers import MobileNetClassifier, ResNetClassifier, SqueezeNetClassifier
 from src.engine.trainer import SupervisedTrainer
 from src.training.tensorboard import TrainingRecorder
 
@@ -30,7 +30,9 @@ def main():
     checkpoint_path = os.path.join(recorder.summary_filepath, "checkpoint.pth")
 
     model = ResNetClassifier(checkpoint_path)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    model.load()
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss_train = torch.nn.BCELoss()
     loss_test = torch.nn.BCELoss()
 
