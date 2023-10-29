@@ -92,7 +92,7 @@ def build_arg_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
-        "--output_path",
+        "--output-path",
         type=str,
         help="Path to the output directory, where the model will be saved.",
         required=True,
