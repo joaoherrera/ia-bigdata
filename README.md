@@ -22,7 +22,7 @@ DATA_PATH is the path to a folder containing the dataset (images).
 ```
 
 ## Dataset Preprocessing
-There are a few scripts available to preprocess data. They can be found in the [standalone](standalone/) directory.
+There are a few scripts available to preprocess data. They can be found in the [standalone](src/standalone/) directory.
 
 - `dataset_split.py`: Splits a dataset into `train`, `test` and `validation` sets. Usage: 
 ```shell
@@ -51,7 +51,7 @@ OUTPUT_DIRECTORY: Path to the output directory.
 
 ## Model Training & Evaluation
 Training a Deep Learning model for a given computer vision task is possible at
-[src/training/train.py](src/training/train.py). It can be executed as follows:
+[train.py](src/training/train.py). It can be executed as follows:
 
 ```shell
 python train.py 
