@@ -28,7 +28,6 @@ fi
 
 docker build \
     --build-arg USER=$USER \
-    --build-arg PW=88452452 \
     --build-arg UID=$UID \
     --build-arg GID=$GID \
     --tag $image_name .
