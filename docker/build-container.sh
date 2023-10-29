@@ -1,15 +1,18 @@
 #!/bin/bash
 
-export UID=$(id -u)
-export GID=$(id -g)
+UID=$(id -u)
+GID=$(id -g)
+image_name=ai-palatal-rugoscopy
+container_name=ai-palatal-rugoscopy-env
+hostname=$container_name
 
 while [[ $# -gt 0 ]]; do
     case $1 in 
     --clean-container | --clean-all)
-        docker rm ai-palatal-rugoscopy-env > /dev/null 2>&1
+        docker rm $container_name > /dev/null 2>&1
         ;;
     --clean-image | --clean-all)
-        docker rmi ai-palatal-rugoscopy > /dev/null 2>&1
+        docker rmi $image_name > /dev/null 2>&1
         ;;
     --data-path)
         data_path=$2
@@ -28,12 +31,12 @@ docker build \
     --build-arg PW=88452452 \
     --build-arg UID=$UID \
     --build-arg GID=$GID \
-    --tag ai-palatal-rugoscopy .
+    --tag $image_name .
 
 docker run -it \
     --gpus all \
     --volume $(dirname `pwd`):/home/$USER/workspace/ia-palatal-rugoscopy \
     --volume $data_path:/home/$USER/data \
-    --hostname ai-palatal-rugoscopy-env \
-    --name ai-palatal-rugoscopy-env \
-    ai-palatal-rugoscopy
+    --hostname $hostname \
+    --name $container_name \
+    $image_name

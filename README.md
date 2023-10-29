@@ -19,9 +19,8 @@ bash build_container.sh --data-path <DATA_PATH>
 
 Where:
 
-```
-DATA_PATH is the path to a folder containing the dataset (images).
-```
+- DATA_PATH is the path to a folder containing the dataset (images).
+
 
 ## Dataset Preprocessing
 
@@ -51,7 +50,6 @@ There are a few scripts available to preprocess data. They can be found in the [
   - INPUT_ANNOTATIONS: Path to the images' annotation file.
   - OUTPUT_DIRECTORY: Path to the output directory.
 
-
 ## Model Training & Evaluation
 
 Training a Deep Learning model for a given computer vision task is taken care of by
@@ -69,7 +67,6 @@ python train.py \
 ```
 
 Where:
-
 
 - TRAINING_IMAGES_DIRECTORY: Path to the directory containing training images.
 - TRAINING_ANNOTATIONS_PATH: Path to the annotation file of the training set.
