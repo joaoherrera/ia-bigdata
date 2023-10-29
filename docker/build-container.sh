@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# Check wheter path to data folder is provided by the user, otherwise no data will be available inside the container.
+# Check whether path to data folder is provided by the user, otherwise no data will be available inside the container.
 if [[ -z $data_path ]]; then
     echo "ERROR: Data folder not specified"
     exit 1
