@@ -1,14 +1,41 @@
 #!/bin/bash
 
-export UID=$(id -u)
-export GID=$(id -g)
+UID=$(id -u)
+GID=$(id -g)
+image_name=ai-palatal-rugoscopy
+container_name=ai-palatal-rugoscopy-env
+hostname=$container_name
 
-for arg in $@; do
-    if [[ $arg == clean ]]; then
-        docker rm cv-hardware-parts
-	docker rmi ia-bigdata
-    fi;
+while [[ $# -gt 0 ]]; do
+    case $1 in 
+    --clean-container | --clean-all)
+        docker rm $container_name > /dev/null 2>&1
+        ;;
+    --clean-image | --clean-all)
+        docker rmi $image_name > /dev/null 2>&1
+        ;;
+    --data-path)
+        data_path=$2
+    esac
+    shift
 done
 
-docker build --build-arg USER=$USER --build-arg PW=cv123 --build-arg UID=$UID --build-arg GID=$GID -t ia-bigdata .
-docker run -it --gpus all -v $(dirname `pwd`):/home/$USER/workspace/cv-hardware-parts -v $HOME/SMACS-0723:/home/$USER/server --name cv-hardware-parts ia-bigdata
+# Check whether path to data folder is provided by the user, otherwise no data will be available inside the container.
+if [[ -z $data_path ]]; then
+    echo "ERROR: Data folder not specified"
+    exit 1
+fi
+
+docker build \
+    --build-arg USER=$USER \
+    --build-arg UID=$UID \
+    --build-arg GID=$GID \
+    --tag $image_name .
+
+docker run -it \
+    --gpus all \
+    --volume $(dirname `pwd`):/home/$USER/workspace/ia-palatal-rugoscopy \
+    --volume $data_path:/home/$USER/data \
+    --hostname $hostname \
+    --name $container_name \
+    $image_name
