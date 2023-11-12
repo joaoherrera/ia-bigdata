@@ -11,7 +11,7 @@ import albumentations
 import numpy as np
 
 
-class ScrewAugmentations:
+class Augmentations:
     transformer = albumentations.Compose(
         [
             albumentations.RandomRotate90(
