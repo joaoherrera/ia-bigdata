@@ -1,4 +1,11 @@
-from typing import Tuple
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# ALbumentations is a Python library for image augmentation. The Compose function is used to apply                    #
+# multiple augmentations at once. To visualize the effects of each algumentation algorithm on an image, please visit: #
+# Albumentations Demo: https://github.com/albumentations-team/albumentations-demo                                     #
+# Official Albumentations repo: https://github.com/albumentations-team/albumentations                                 #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
+from typing import Dict, Tuple
 
 import albumentations
 import numpy as np
@@ -59,5 +66,17 @@ class ScrewAugmentations:
     )
 
     @classmethod
-    def augment(cls, image: np.ndarray, annotations: dict, **kwargs: dict) -> Tuple[np.ndarray, dict]:
+    def augment(cls, image: np.ndarray, annotations: Dict, **kwargs: Dict) -> Tuple[np.ndarray, Dict]:
+        """Augments an image and its annotations.
+
+        Args:
+            image (np.ndarray): The input image.
+            annotations (Dict): The annotations associated with the image.
+            **kwargs (Dict): Additional keyword arguments. Currently not used. Created for matching with other methods
+            called by src.dataset.preprocessing.OrderedCompose class.
+
+        Returns:
+            Tuple[np.ndarray, Dict]: A tuple containing the augmented image and the updated annotations.
+        """
+
         return cls.transformer(image=image)["image"], annotations
