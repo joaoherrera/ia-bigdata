@@ -5,10 +5,11 @@ from datetime import datetime
 import torch
 from torch.utils.data import DataLoader
 
-from src.architectures.detector_maskrcnn import MaskRCNN
+from src.architectures.detector_maskrcnn import MaskRCNNDetector
 from src.dataset.augmentations import Augmentations
+from src.dataset.composer import OrderedCompose
 from src.dataset.dataset_coco import CocoDataset
-from src.dataset.preprocessing import CocoPreprocessing, OrderedCompose
+from src.dataset.preprocessing import CocoPreprocessing
 from src.engine.trainer import SupervisedTrainer
 from src.training.tensorboard import TrainingRecorder
 
@@ -47,7 +48,7 @@ def load_model(checkpoint_path: str) -> torch.nn.Module:
         torch.nn.Module: The loaded model.
     """
 
-    model = MaskRCNN(checkpoint_path)
+    model = MaskRCNNDetector(checkpoint_path)
     model.load()
 
     return model
@@ -202,9 +203,15 @@ def build_arg_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
+        "--learning-rate",
+        type=float,
+        help="Learning rate",
+        default=0.001,
+    )
+
+    parser.add_argument(
         "--preprocess",
         action="store_true",
-        type=bool,
         help="Whether to preprocess the dataset or not",
         default=False,
     )
@@ -212,7 +219,6 @@ def build_arg_parser() -> ArgumentParser:
     parser.add_argument(
         "--augment",
         action="store_true",
-        type=bool,
         help="Whether to augment the dataset or not",
         default=False,
     )
@@ -220,7 +226,6 @@ def build_arg_parser() -> ArgumentParser:
     parser.add_argument(
         "--gpu",
         action="store_true",
-        type=bool,
         help="Whether to use GPU or not",
         default=True,
     )

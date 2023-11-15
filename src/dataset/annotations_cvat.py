@@ -7,6 +7,7 @@ from typing import Dict
 
 from src.dataset.annotations_base import XMLAnnotations
 from src.dataset.annotations_coco import COCOAnnotations
+from src.dataset.annotations_utils import to_dict
 
 
 class CVATAnnotations(XMLAnnotations):
@@ -62,7 +63,7 @@ class CVATAnnotations(XMLAnnotations):
             coco_category = COCOAnnotations.create_category_instance(i + 1, category["name"])
             coco_annotations.data["categories"].append(coco_category)
 
-        categories_by_name = COCOAnnotations.to_dict(coco_annotations.data["categories"], "name")
+        categories_by_name = to_dict(coco_annotations.data["categories"], "name")
 
         # Finally, Convert CVAT annotations to COCO annotations
         for i, image in enumerate(cvat_images):

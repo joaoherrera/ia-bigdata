@@ -18,10 +18,19 @@ class MaskRCNNDetector(ArchBase):
 
         super().__init__(model_path)
 
-        self.model = torchvision.models.detection.MaskRCNN(
-            backbone="resnet50", weights=torchvision.models.ResNet50_Weights.IMAGENET1K_V2
-        )
+        weights_base = torchvision.models.detection.MaskRCNN_ResNet50_FPN_Weights.DEFAULT
+        self.model = torchvision.models.detection.maskrcnn_resnet50_fpn(weights=weights_base)
 
-        self.model.roi_heads.box_predictor = torch.nn.Sequential(
-            torch.nn.Linear(self.model.roi_heads.box_predictor.in_features, 1)
-        )
+        in_features = self.model.roi_heads.box_predictor.cls_score.in_features
+        self.model.roi_heads.box_predictor = torchvision.models.detection.faster_rcnn.FastRCNNPredictor(in_features, 2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the model.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+        Returns:
+            torch.Tensor: Output tensor.
+        """
+
+        return self.model.forward(x)
