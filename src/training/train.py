@@ -1,66 +1,155 @@
 import os
+from argparse import ArgumentParser
 from datetime import datetime
 
 import torch
-from torch.utils.data import DataLoader, random_split
-from argparse import ArgumentParser
+from torch.utils.data import DataLoader
 
-from src.dataset.augmentations import ScrewAugmentations
-from src.dataset.dataset import CocoDataset, DatasetUtils
-from src.dataset.preprocessing import OrderedCompose, CocoPreprocessing
-from src.engine.classifiers import MobileNetClassifier, ResNetClassifier, SqueezeNetClassifier
+from src.architectures.detector_maskrcnn import MaskRCNN
+from src.dataset.augmentations import Augmentations
+from src.dataset.dataset_coco import CocoDataset
+from src.dataset.preprocessing import CocoPreprocessing, OrderedCompose
 from src.engine.trainer import SupervisedTrainer
 from src.training.tensorboard import TrainingRecorder
 
 
-def main(args: dict) -> None:
-    recorder = TrainingRecorder(f"{args.get('output_path')}/training_{datetime.now().__str__()}")
-    checkpoint_path = os.path.join(recorder.summary_filepath, "checkpoint.pth")
+def create_training_report(args: dict) -> None:
+    """Creates a training report and save it as a text file.
 
-    # Setup augmentations and preprocessing functions to be used during training.
-    augmentations_funcs = OrderedCompose([ScrewAugmentations.augment])
-    preprocessing_funcs = OrderedCompose([CocoPreprocessing.resize], size=(224, 224))
+    Args:
+        args (dict): A dictionary containing the training arguments provided by the user.
+    """
 
-    # ~~ Train subset
-    train_subset = CocoDataset(
-        args.get("training_images"),
-        args.get("training_annotations"),
+    output_path = args.get("output_path")
+    report_path = os.path.join(output_path, "training_report.txt")
+
+    os.makedirs(output_path, exist_ok=True)
+
+    with open(report_path, "w") as f:
+        f.write("Training report: \n")
+        f.write(f"Training images: {args.get('training_images')}\n")
+        f.write(f"Training annotations: {args.get('training_annotations')}\n")
+        f.write(f"Validation images: {args.get('validation_images')}\n")
+        f.write(f"Validation annotations: {args.get('validation_annotations')}\n")
+        f.write(f"Batch size: {args.get('batch_size')}\n")
+        f.write(f"Epochs: {args.get('epochs')}\n")
+        f.write(f"Learning rate: {args.get('learning_rate')}\n")
+        f.write(f"GPU: {args.get('gpu')}\n")
+
+
+def load_model(checkpoint_path: str) -> torch.nn.Module:
+    """Load a pre-trained model.
+
+    Args:
+        checkpoint_path (str): The path to the checkpoint file.
+
+    Returns:
+        torch.nn.Module: The loaded model.
+    """
+
+    model = MaskRCNN(checkpoint_path)
+    model.load()
+
+    return model
+
+
+def load_dataset(
+    images_path: str,
+    annotations_path: str,
+    preprocessing_funcs: list,
+    augmentations_funcs: list,
+    batch_size: int,
+    shuffle: bool,
+) -> DataLoader:
+    """Load a dataset for training or evaluation.
+
+    Args:
+        images_path (str): The path to the directory containing the images.
+        annotations_path (str): The path to the file containing the annotations.
+        preprocessing_funcs (list): A list of preprocessing functions to apply to the images.
+        augmentations_funcs (list): A list of augmentation functions to apply to the images.
+        batch_size (int): The number of samples per batch.
+        shuffle (bool): Whether to shuffle the samples before each epoch.
+
+    Returns:
+        DataLoader: A DataLoader object to iterate over the dataset.
+    """
+
+    dataset = CocoDataset(
+        images_path,
+        annotations_path,
         augmentations=augmentations_funcs,
         preprocessing=preprocessing_funcs,
     )
-    train_dataloader = DataLoader(
-        train_subset,
-        batch_size=args.get("batch_size"),
+
+    return dataset.dataloader(batch_size, shuffle)
+
+
+def train(args: dict) -> None:
+    """Trains a model using PyTorch.
+
+    Args:
+    - args (dict): A dictionary containing the arguments for training. It should have the following keys:
+        - training_images (str): The path to the training images.
+        - training_annotations (str): The path to the training annotations.
+        - validation_images (str): The path to the validation images.
+        - validation_annotations (str): The path to the validation annotations.
+        - batch_size (int): The batch size for training.
+        - output_path (str): The path where the training outputs will be saved.
+        - learning_rate (float): The learning rate for training.
+        - epochs (int): The number of training epochs.
+        - gpu (bool): Whether to use GPU for training.
+    """
+
+    # Load datasets for training and validation
+    batch_size = args.get("batch_size")
+    augmentations_funcs = OrderedCompose([Augmentations.augment])
+    preprocessing_funcs = OrderedCompose([CocoPreprocessing.resize], size=(224, 224))
+
+    train_set = load_dataset(
+        images_path=args.get("training_images"),
+        annotations_path=args.get("training_annotations"),
+        preprocessing_funcs=preprocessing_funcs,
+        augmentations_funcs=augmentations_funcs,
+        batch_size=batch_size,
         shuffle=True,
     )
 
-    # ~~ Validation subset
-    validation_subset = CocoDataset(
-        args.get("validation_images"),
-        args.get("validation_annotations"),
-        augmentations=None,
-        preprocessing=preprocessing_funcs,
-    )
-    validation_dataloader = DataLoader(
-        validation_subset,
-        batch_size=args.get("batch_size"),
+    validation_set = load_dataset(
+        images_path=args.get("validation_images"),
+        annotations_path=args.get("validation_annotations"),
+        preprocessing_funcs=preprocessing_funcs,
+        augmentations_funcs=None,  # No augmentation in validation!
+        batch_size=batch_size,
         shuffle=True,
     )
 
-    # Training settings
-    loss_validation = torch.nn.BCELoss()
-    loss_train = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    # ~ Training settings
+    output_path = args.get("output_path")
+    learning_rate = args.get("learning_rate")
     epochs = args.get("epochs")
+    loss = {"train": torch.nn.BCELoss(), "validation": torch.nn.BCELoss()}
+    device = torch.device("cuda") if args.get("gpu") and torch.cuda.is_available() else torch.device("cpu")
+    recorder = TrainingRecorder(f"{output_path}/training_{datetime.now().__str__()}")
 
-    model = ResNetClassifier(checkpoint_path)
-    model.load()
+    # Load model. Weights will be saved in output_path.
+    checkpoint_path = os.path.join(output_path, "checkpoint.pth")
+    model = load_model(checkpoint_path)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    trainer = SupervisedTrainer(torch.device("cuda:0"), model, recorder)
-    trainer.fit(train_subset, validation_subset, optimizer, loss_train, loss_validation, epochs, verbose=False)
+    # Start training
+    create_training_report(args)
+    trainer = SupervisedTrainer(device, model, recorder)
+    trainer.fit(train_set, validation_set, optimizer, loss["train"], loss["validation"], epochs, verbose=False)
 
 
 def build_arg_parser() -> ArgumentParser:
+    """Builds and returns an argument parser for training a deep learning model.
+
+    Returns:
+        ArgumentParser: The argument parser object.
+    """
+
     parser = ArgumentParser(description="Train a deep learning model")
 
     parser.add_argument(
@@ -112,9 +201,33 @@ def build_arg_parser() -> ArgumentParser:
         default=50,
     )
 
+    parser.add_argument(
+        "--preprocess",
+        action="store_true",
+        type=bool,
+        help="Whether to preprocess the dataset or not",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--augment",
+        action="store_true",
+        type=bool,
+        help="Whether to augment the dataset or not",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--gpu",
+        action="store_true",
+        type=bool,
+        help="Whether to use GPU or not",
+        default=True,
+    )
+
     return parser
 
 
 if __name__ == "__main__":
     args = build_arg_parser().parse_args()
-    main(vars(args))
+    train(vars(args))
