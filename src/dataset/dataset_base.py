@@ -5,8 +5,10 @@
 from abc import ABC, abstractmethod
 from typing import Any, Tuple
 
+from torch.utils.data import DataLoader, Dataset
 
-class BaseDataset(ABC):
+
+class BaseDataset(Dataset, ABC):
     def __init__(self) -> None:
         """Initializes a new instance of the class."""
 
@@ -34,6 +36,40 @@ class BaseDataset(ABC):
         """Return the data stored in the object."""
 
         return self.data
+
+    def __len__(self) -> int:
+        """Returns the length of the object.
+
+        Args:
+            self: The object itself.
+        Returns:
+            An integer representing the length of the object.
+        """
+
+        raise NotImplementedError()
+
+    def __getitem__(self, idx: int) -> Any:
+        """Get the item at the specified index.
+
+        Args:
+            idx (int): The index of the item to get.
+        """
+
+        raise NotImplementedError()
+
+    @classmethod
+    def dataloader(cls, batch_size: int, shuffle: bool) -> DataLoader:
+        """Class method that returns a DataLoader object.
+
+        Args:
+            batch_size (int): The batch size for the DataLoader.
+            shuffle (bool): Whether to shuffle the data or not.
+
+        Returns:
+            DataLoader: The DataLoader object.
+        """
+
+        return DataLoader(cls, batch_size=batch_size, shuffle=shuffle)
 
 
 class MutableDataset(BaseDataset, ABC):

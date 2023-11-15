@@ -9,7 +9,6 @@ from typing import Any, Callable, Tuple
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset
 
 from src.dataset.annotations_coco import COCOAnnotations
 from src.dataset.dataset_base import MutableDataset
@@ -17,7 +16,7 @@ from src.dataset.dataset_utils import read_image
 
 
 @dataclass
-class CocoDataset(Dataset, MutableDataset):
+class CocoDataset(MutableDataset):
     data_directory_path: str
     data_annotation_path: str
     augmentations: Callable = None
@@ -135,17 +134,3 @@ class CocoDataset(Dataset, MutableDataset):
             print(f"Category Label: {c['name']} \t Category ID: {c['id']}")
             print(f"Instances: {len(images_per_category[c['id']])}")
         print("=" * horizontal_bar_length)
-
-    @classmethod
-    def dataloader(cls, batch_size: int, shuffle: bool) -> DataLoader:
-        """Class method that returns a DataLoader object.
-
-        Args:
-            batch_size (int): The batch size for the DataLoader.
-            shuffle (bool): Whether to shuffle the data or not.
-
-        Returns:
-            DataLoader: The DataLoader object.
-        """
-
-        return DataLoader(cls, batch_size=batch_size, shuffle=shuffle)
