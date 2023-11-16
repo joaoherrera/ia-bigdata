@@ -210,6 +210,13 @@ def build_arg_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
+        "--seed",
+        type=int,
+        help="A seed for reproducibility",
+        default=2183648025,
+    )
+
+    parser.add_argument(
         "--preprocess",
         action="store_true",
         help="Whether to preprocess the dataset or not",
@@ -228,13 +235,6 @@ def build_arg_parser() -> ArgumentParser:
         action="store_true",
         help="Whether to use GPU or not",
         default=True,
-    )
-
-    parser.add_argument(
-        "--seed",
-        type=int,
-        help="A seed for reproducibility",
-        default=14170000,
     )
 
     return parser

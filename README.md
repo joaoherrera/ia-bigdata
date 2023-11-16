@@ -63,11 +63,12 @@ python src.training.train \
     --validation-annotations <VALIDATION_ANNOTATIONS_PATH> \
     --output-path <OUTPUT_DIRECTORY> \
     --batch-size <BATCH_SIZE> \
-    --epochs <EPOCHS> 
-    --learning-rate <LEARNING_RATE>
-    <--preprocess>
-    <--augment>
-    <--gpu>
+    --epochs <EPOCHS> \
+    --learning-rate <LEARNING_RATE> \
+    --seed <SEED> \
+    <--preprocess> \
+    <--augment> \
+    <--gpu> 
 ```
 
 Where:
@@ -80,6 +81,7 @@ Where:
 - BATCH_SIZE: Size of training and validation batches. Default 16.
 - EPOCHS: Number of epochs. Default 50.
 - LEARNING_RATE: Learning rate. Default 0.001.
+- SEED: A seed for reproducibility. Default 2183648025.
 - preprocess: Whether apply preprocessing algoritms (hardcoded in the train script for now).
 - augment: Whether augment data using Albumentations (check src/dataset/augmentations.py for more details).
 - gpu: Whether use GPU, otherwise CPU.
