@@ -71,7 +71,7 @@ class BaseDataset(Dataset, ABC):
             DataLoader: The DataLoader object.
         """
 
-        return DataLoader(self, batch_size=batch_size, shuffle=shuffle)
+        raise NotImplementedError()
 
 
 class MutableDataset(BaseDataset, ABC):

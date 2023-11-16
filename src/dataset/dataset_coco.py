@@ -31,7 +31,6 @@ class CocoDataset(MutableDataset):
         object has been created."""
 
         if self.seed is not None:
-            torch.manual_seed(self.seed)
             np.random.seed(self.seed)
 
         super().__init__()
@@ -78,6 +77,19 @@ class CocoDataset(MutableDataset):
         """
 
         return len(self.annotations)
+
+    def dataloader(self, batch_size: int, shuffle: bool) -> DataLoader:
+        """Class method that returns a DataLoader object.
+
+        Args:
+            batch_size (int): The batch size for the DataLoader.
+            shuffle (bool): Whether to shuffle the data or not.
+
+        Returns:
+            DataLoader: The DataLoader object.
+        """
+
+        return DataLoader(self, batch_size=batch_size, shuffle=shuffle)
 
     def split(self, *percentages: float, random: bool) -> Tuple[Any, ...]:
         """Splits the dataset into subsets based on the given percentages.
@@ -136,16 +148,3 @@ class CocoDataset(MutableDataset):
             print(f"Category Label: {c['name']} \t Category ID: {c['id']}")
             print(f"Instances: {len(images_per_category[c['id']])}")
         print("=" * horizontal_bar_length)
-
-    def dataloader(cls, batch_size: int, shuffle: bool) -> DataLoader:
-        """Class method that returns a DataLoader object.
-
-        Args:
-            batch_size (int): The batch size for the DataLoader.
-            shuffle (bool): Whether to shuffle the data or not.
-
-        Returns:
-            DataLoader: The DataLoader object.
-        """
-
-        return DataLoader(cls, batch_size=batch_size, shuffle=shuffle)
