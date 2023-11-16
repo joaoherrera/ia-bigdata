@@ -29,6 +29,7 @@ def create_training_report(args: dict) -> None:
 
     with open(report_path, "w") as f:
         f.write("Training report: \n")
+        f.write(f"Timestamp: {datetime.now()}\n")
         f.write(f"Training images: {args.get('training_images')}\n")
         f.write(f"Training annotations: {args.get('training_annotations')}\n")
         f.write(f"Validation images: {args.get('validation_images')}\n")
@@ -36,6 +37,9 @@ def create_training_report(args: dict) -> None:
         f.write(f"Batch size: {args.get('batch_size')}\n")
         f.write(f"Epochs: {args.get('epochs')}\n")
         f.write(f"Learning rate: {args.get('learning_rate')}\n")
+        f.write(f"Seed: {args.get('seed')}\n")
+        f.write(f"Preprocessing: {args.get('preprocess')}\n")
+        f.write(f"Augmentation: {args.get('augment')}\n")
         f.write(f"GPU: {args.get('gpu')}\n")
 
 
@@ -102,8 +106,12 @@ def train(args: dict) -> None:
     # Load datasets for training and validation
     seed = args.get("seed")
     batch_size = args.get("batch_size")
-    augmentations_funcs = OrderedCompose([Augmentations.augment])
-    preprocessing_funcs = OrderedCompose([CocoPreprocessing.resize], size=(224, 224))
+    preprocessing_funcs, augmentations_funcs = None, None
+
+    if args.get("preprocess"):
+        preprocessing_funcs = OrderedCompose([CocoPreprocessing.resize], size=(224, 224))
+    if args.get("augment"):
+        augmentations_funcs = OrderedCompose([Augmentations.augment])
 
     train_set, train_loader = load_dataset(
         images_path=args.get("training_images"),
