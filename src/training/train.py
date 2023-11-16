@@ -1,9 +1,10 @@
 import os
 from argparse import ArgumentParser
 from datetime import datetime
+from typing import Tuple
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from src.architectures.detector_maskrcnn import MaskRCNNDetector
 from src.dataset.augmentations import Augmentations
@@ -38,17 +39,18 @@ def create_training_report(args: dict) -> None:
         f.write(f"GPU: {args.get('gpu')}\n")
 
 
-def load_model(checkpoint_path: str) -> torch.nn.Module:
+def load_model(checkpoint_path: str, num_classes: int) -> torch.nn.Module:
     """Load a pre-trained model.
 
     Args:
         checkpoint_path (str): The path to the checkpoint file.
+        num_classes (int): The number of classes in the dataset.
 
     Returns:
         torch.nn.Module: The loaded model.
     """
 
-    model = MaskRCNNDetector(checkpoint_path)
+    model = MaskRCNNDetector(checkpoint_path, num_classes)
     model.load()
 
     return model
@@ -61,7 +63,8 @@ def load_dataset(
     augmentations_funcs: list,
     batch_size: int,
     shuffle: bool,
-) -> DataLoader:
+    seed: str,
+) -> Tuple[Dataset, DataLoader]:
     """Load a dataset for training or evaluation.
 
     Args:
@@ -73,17 +76,11 @@ def load_dataset(
         shuffle (bool): Whether to shuffle the samples before each epoch.
 
     Returns:
-        DataLoader: A DataLoader object to iterate over the dataset.
+        Tuple[Dataset, DataLoader]: A tuple containing the dataset and the dataloader.
     """
 
-    dataset = CocoDataset(
-        images_path,
-        annotations_path,
-        augmentations=augmentations_funcs,
-        preprocessing=preprocessing_funcs,
-    )
-
-    return dataset.dataloader(batch_size, shuffle)
+    dataset = CocoDataset(images_path, annotations_path, augmentations_funcs, preprocessing_funcs, seed)
+    return dataset, dataset.dataloader(batch_size, shuffle)
 
 
 def train(args: dict) -> None:
@@ -103,26 +100,29 @@ def train(args: dict) -> None:
     """
 
     # Load datasets for training and validation
+    seed = args.get("seed")
     batch_size = args.get("batch_size")
     augmentations_funcs = OrderedCompose([Augmentations.augment])
     preprocessing_funcs = OrderedCompose([CocoPreprocessing.resize], size=(224, 224))
 
-    train_set = load_dataset(
+    train_set, train_loader = load_dataset(
         images_path=args.get("training_images"),
         annotations_path=args.get("training_annotations"),
         preprocessing_funcs=preprocessing_funcs,
         augmentations_funcs=augmentations_funcs,
         batch_size=batch_size,
         shuffle=True,
+        seed=seed,
     )
 
-    validation_set = load_dataset(
+    __, validation_loader = load_dataset(
         images_path=args.get("validation_images"),
         annotations_path=args.get("validation_annotations"),
         preprocessing_funcs=preprocessing_funcs,
         augmentations_funcs=None,  # No augmentation in validation!
         batch_size=batch_size,
         shuffle=True,
+        seed=seed,
     )
 
     # ~ Training settings
@@ -135,13 +135,13 @@ def train(args: dict) -> None:
 
     # Load model. Weights will be saved in output_path.
     checkpoint_path = os.path.join(output_path, "checkpoint.pth")
-    model = load_model(checkpoint_path)
+    model = load_model(checkpoint_path, num_classes=len(train_set.categories))
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # Start training
     create_training_report(args)
-    trainer = SupervisedTrainer(device, model, recorder)
-    trainer.fit(train_set, validation_set, optimizer, loss["train"], loss["validation"], epochs, verbose=False)
+    trainer = SupervisedTrainer(device, model, recorder, seed)
+    trainer.fit(train_loader, validation_loader, optimizer, loss["train"], loss["validation"], epochs, verbose=False)
 
 
 def build_arg_parser() -> ArgumentParser:
@@ -228,6 +228,13 @@ def build_arg_parser() -> ArgumentParser:
         action="store_true",
         help="Whether to use GPU or not",
         default=True,
+    )
+
+    parser.add_argument(
+        "--seed",
+        type=int,
+        help="A seed for reproducibility",
+        default=14170000,
     )
 
     return parser
