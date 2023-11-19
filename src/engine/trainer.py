@@ -54,7 +54,7 @@ class SupervisedTrainer:
         with torch.set_grad_enabled(True):
             for n, batch in enumerate(dataset):
                 x_pred, y_true = batch
-                x_pred, y_true = x_pred.to(self.device), y_true.to(self.device)
+                x_pred = x_pred.to(self.device)
 
                 # Zero gradients for each batch
                 optimizer.zero_grad()

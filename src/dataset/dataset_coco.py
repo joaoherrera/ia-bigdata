@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from src.dataset.annotations_coco import COCOAnnotations
 from src.dataset.annotations_utils import to_dict
 from src.dataset.dataset_base import MutableDataset
-from src.dataset.dataset_utils import read_image
+from src.dataset.dataset_utils import generate_instance_mask, read_image
 
 
 @dataclass
@@ -36,47 +36,7 @@ class CocoDataset(MutableDataset):
         super().__init__()
 
         self.tree = COCOAnnotations(self.data_annotation_path, self.balancing_strategy)
-        self.images = to_dict(self.tree.data["images"], "id")
-        self.categories = to_dict(self.tree.data["categories"], "id")
-        self.annotations = self.tree.data.get("annotations")
-
         self.preview_dataset()
-
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Get the image and category data for a given index.
-
-        Args:
-            idx (int): The index of the data to retrieve.
-        Returns:
-            Tuple[torch.Tensor, torch.Tensor]: A tuple containing the image tensor and the category tensor.
-        """
-
-        annotation = self.annotations[idx]
-        image_data = self.images[annotation["image_id"]]
-        image_path = os.path.join(self.data_directory_path, image_data[0]["file_name"])
-        image = read_image(image_path)
-
-        # apply preprocessing
-        if self.preprocessing is not None:
-            image, annotation = self.preprocessing(image, annotation)
-
-        # apply augmentations
-        if self.augmentations is not None:
-            image, annotation = self.augmentations(image, annotation)
-
-        image = torch.tensor(image.transpose(2, 0, 1), dtype=torch.float32)  # (H, W, C) -> (C, H, W)
-        category = torch.tensor(self.categories[annotation["category_id"]][0]["id"] - 1, dtype=torch.float32)
-
-        return image, category
-
-    def __len__(self) -> int:
-        """Returns the length of the object.
-
-        Returns:
-            int: The length of the object.
-        """
-
-        return len(self.annotations)
 
     def dataloader(self, batch_size: int, shuffle: bool) -> DataLoader:
         """Class method that returns a DataLoader object.
@@ -145,6 +105,101 @@ class CocoDataset(MutableDataset):
         images_per_category = to_dict(self.tree.data["annotations"], "category_id")
 
         for c in self.tree.data["categories"]:
-            print(f"Category Label: {c['name']} \t Category ID: {c['id']}")
-            print(f"Instances: {len(images_per_category[c['id']])}")
+            try:
+                print(f"Category Label: {c['name']} \t Category ID: {c['id']}")
+                print(f"Instances: {len(images_per_category[c['id']])}")
+            except KeyError:
+                print(f"Instances: {0}")
         print("=" * horizontal_bar_length)
+
+
+class CocoDatasetClassification(CocoDataset):
+    def __post_init__(self) -> None:
+        """Initialize important attributes of the object. This function is automatically called after the
+        object has been created."""
+
+        super().__post_init__()
+
+        self.images = to_dict(self.tree.data["images"], "id")
+        self.categories = to_dict(self.tree.data["categories"], "id")
+        self.annotations = self.tree.data.get("annotations")
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get the image and category data for a given index.
+
+        Args:
+            idx (int): The index of the data to retrieve.
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: A tuple containing the image tensor and the category tensor.
+        """
+
+        annotation = self.annotations[idx]
+        image_data = self.images[annotation["image_id"]]
+        image_path = os.path.join(self.data_directory_path, image_data[0]["file_name"])
+        image = read_image(image_path)
+
+        # apply preprocessing
+        if self.preprocessing is not None:
+            image, annotation = self.preprocessing(image, annotation)
+
+        # apply augmentations
+        if self.augmentations is not None:
+            image, annotation = self.augmentations(image, annotation)
+
+        image = torch.tensor(image.transpose(2, 0, 1), dtype=torch.float32)  # (H, W, C) -> (C, H, W)
+        category = torch.tensor(self.categories[annotation["category_id"]][0]["id"] - 1, dtype=torch.float32)
+
+        return image, category
+
+    def __len__(self) -> int:
+        """Returns the length of the object.
+
+        Returns:
+            int: The length of the object.
+        """
+
+        return len(self.annotations)
+
+
+class CocoDatasetInstanceSegmentation(CocoDataset):
+    def __post_init__(self) -> None:
+        """Initialize important attributes of the object. This function is automatically called after the
+        object has been created."""
+
+        super().__post_init__()
+
+        self.images = self.tree.data.get("images")
+        self.categories = to_dict(self.tree.data["categories"], "id")
+        self.annotations = to_dict(self.tree.data.get("annotations"), "image_id")
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        image_data = self.images[idx]
+        annotations = self.annotations[image_data["id"]]
+        image_path = os.path.join(self.data_directory_path, image_data["file_name"])
+        image = read_image(image_path)
+
+        # apply preprocessing
+        if self.preprocessing is not None:
+            image, annotations = self.preprocessing(image, annotations)
+
+        # apply augmentations
+        if self.augmentations is not None:
+            image, annotations = self.augmentations(image, annotations)
+
+        # Generate instance masks for each annotation
+        for annotation in annotations:
+            mask = generate_instance_mask(image, annotation)
+            annotation["mask"] = torch.tensor(mask, dtype=torch.float32)
+            annotation["boxes"] = torch.tensor(annotation["bbox"])
+
+        image = torch.tensor(image.transpose(2, 0, 1), dtype=torch.float32)  # (H, W, C) -> (C, H, W)
+        return image, annotations
+
+    def __len__(self) -> int:
+        """Returns the length of the object.
+
+        Returns:
+            int: The length of the object.
+        """
+
+        return len(self.images)

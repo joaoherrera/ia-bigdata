@@ -3,13 +3,13 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 import os
-from typing import List
+from typing import Dict, List
 
 import cv2
 import numpy as np
+from pycocotools import mask as coco_mask
 
 
-@staticmethod
 def read_image(image_path: str, read_mode: int = cv2.IMREAD_COLOR, channel_first: bool = False) -> np.ndarray:
     """Reads an image from the given path.
 
@@ -35,7 +35,6 @@ def read_image(image_path: str, read_mode: int = cv2.IMREAD_COLOR, channel_first
         return image
 
 
-@staticmethod
 def read_paths(directory_path: str) -> List[str]:
     """Read the list of paths in a given directory.
 
@@ -51,3 +50,37 @@ def read_paths(directory_path: str) -> List[str]:
         raise ValueError(f"Path {directory_path} is not a directory.")
 
     return os.listdir(directory_path)
+
+
+def generate_instance_mask(image: np.ndarray, annotation: Dict) -> np.ndarray:
+    """Generate an instance mask for the given annotation.
+
+    Args:
+        image (np.ndarray): The image array.
+        annotation (Dict): The annotation dictionary.print(annotation["segmentation"].shape)
+
+    Returns:
+        np.ndarray: The instance mask.
+    """
+
+    # There are some annotations that correspond to a crowd of objects (e.g. crowd of people).
+    # In such cases, the segmentation is not a polygon, but a Run-length Encoding (RLE). A RLE is basicaly composed by
+    # a list of values followed by the number of occurences that this value appears sequentially.
+    # Pycocotools package provides functions to encode and decode RLEs.
+
+    if annotation["iscrowd"] == 1:
+        mask = coco_mask.decode(annotation["segmentation"])
+    else:
+        mask = np.zeros(image.shape[:2], dtype=np.uint8)
+        polygons = np.array(annotation["segmentation"], dtype=object)
+
+        # Sometimes an object can be composed by multiple polygons.
+        if polygons.shape[0] > 1:
+            for polygon in polygons:
+                polygon = np.array(polygon).reshape((-1, 2)).astype(np.int32)
+                mask = cv2.fillPoly(mask, [polygon], color=1)
+        else:
+            polygon = polygons.reshape((-1, 2)).astype(np.int32)
+            mask = cv2.fillPoly(mask, [polygon], color=1)
+
+    return mask

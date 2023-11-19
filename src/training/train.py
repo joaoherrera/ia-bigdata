@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 from src.architectures.detector_maskrcnn import MaskRCNNDetector
 from src.dataset.augmentations import Augmentations
 from src.dataset.composer import OrderedCompose
-from src.dataset.dataset_coco import CocoDataset
+from src.dataset.dataset_coco import CocoDatasetInstanceSegmentation
 from src.dataset.preprocessing import CocoPreprocessing
 from src.engine.trainer import SupervisedTrainer
 from src.training.tensorboard import TrainingRecorder
@@ -83,7 +83,14 @@ def load_dataset(
         Tuple[Dataset, DataLoader]: A tuple containing the dataset and the dataloader.
     """
 
-    dataset = CocoDataset(images_path, annotations_path, augmentations_funcs, preprocessing_funcs, seed)
+    dataset = CocoDatasetInstanceSegmentation(
+        images_path,
+        annotations_path,
+        augmentations_funcs,
+        preprocessing_funcs,
+        seed,
+    )
+
     return dataset, dataset.dataloader(batch_size, shuffle)
 
 
