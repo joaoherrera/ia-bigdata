@@ -9,7 +9,6 @@ import cv2
 import numpy as np
 
 
-@staticmethod
 def read_image(image_path: str, read_mode: int = cv2.IMREAD_COLOR, channel_first: bool = False) -> np.ndarray:
     """Reads an image from the given path.
 
@@ -35,7 +34,6 @@ def read_image(image_path: str, read_mode: int = cv2.IMREAD_COLOR, channel_first
         return image
 
 
-@staticmethod
 def read_paths(directory_path: str) -> List[str]:
     """Read the list of paths in a given directory.
 
