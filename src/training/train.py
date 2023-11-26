@@ -6,11 +6,10 @@ from typing import Tuple
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from src.architectures.detector_maskrcnn import MaskRCNNDetector
+from src.architectures.segmenter_maskrcnn import MaskRCNNSegmenter
 from src.dataset.augmentations import Augmentations
 from src.dataset.composer import OrderedCompose
 from src.dataset.dataset_coco import CocoDatasetInstanceSegmentation
-from src.dataset.preprocessing import CocoPreprocessing
 from src.engine.trainer import SupervisedTrainer
 from src.training.tensorboard import TrainingRecorder
 
@@ -54,7 +53,7 @@ def load_model(checkpoint_path: str, num_classes: int) -> torch.nn.Module:
         torch.nn.Module: The loaded model.
     """
 
-    model = MaskRCNNDetector(checkpoint_path, num_classes)
+    model = MaskRCNNSegmenter(checkpoint_path, num_classes)
     model.load()
 
     return model
@@ -116,7 +115,7 @@ def train(args: dict) -> None:
     preprocessing_funcs, augmentations_funcs = None, None
 
     if args.get("preprocess"):
-        preprocessing_funcs = OrderedCompose([CocoPreprocessing.resize], size=(224, 224))
+        preprocessing_funcs = None
     if args.get("augment"):
         augmentations_funcs = OrderedCompose([Augmentations.augment])
 

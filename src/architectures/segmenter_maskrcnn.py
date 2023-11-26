@@ -8,7 +8,7 @@ import torchvision
 from src.architectures.arch_base import ArchBase
 
 
-class MaskRCNNDetector(ArchBase):
+class MaskRCNNSegmenter(ArchBase):
     def __init__(self, model_path: str, num_classes: int) -> None:
         """Class constructor.
 
