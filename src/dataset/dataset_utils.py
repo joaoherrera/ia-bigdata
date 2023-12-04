@@ -3,6 +3,7 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 import os
+from itertools import product
 from typing import List, Tuple
 
 import cv2
@@ -52,14 +53,43 @@ def read_paths(directory_path: str) -> List[str]:
     return os.listdir(directory_path)
 
 
-def to_patches(image: np.ndarray, patch_size: int, stride: int) -> Tuple[List[np.ndarray], List[str]]:
-    # Shape of the output array of patches.
+def to_patches(image: np.ndarray, patch_size: int, stride: int) -> Tuple[List[np.ndarray], List[Tuple, Tuple]]:
+    """Split an image into patches according to a given patch size and stride. 
+
+    IMPORTANT: `as_strided` returns a view, so modifying the returned array will modify the original array.
+    To avoid this, copy the returned array before modifying it.
+
+    Args:
+        image (np.ndarray): The image to split into patches.
+        patch_size (int): The size of the patches. Only square patches are supported.
+        stride (int): The stride between the patches.
+    Returns:
+        Tuple[List[np.ndarray], List[Tuple, Tuple]]: A tuple containing the list of patches and the list of
+        their coordinates.
+    Raises:
+        AssertionError: If the patch size or stride are not greater than 0 or if the patch size is greater than
+        the image size.
+    """
+
+    assert patch_size > 0, "Patch size must be greater than 0"
+    assert stride > 0, "Stride must be greater than 0"
+    assert patch_size < image.shape[0], "Patch size must be smaller than the image height"
+    assert patch_size < image.shape[1], "Patch size must be smaller than the image width"
+
+    # ~~ Defining the shape of the output array of patches
+    # Consider the following image:
+
     # o o x x x      x o o x x      x x o o x     x x x o o      x x x x x      x x x x x      x x x x x      x x x x x
     # o o x x x  ->  x o o x x  ->  x x o o x  -> x x x o o  ->  o o x x x  ->  x o o x x  ->  x x o o x  ->  x x x o o
     # x x x x x      x x x x x      x x x x x     x x x x x      o o x x x      x o o x x      x x o o x      x x x o o
 
-    # In this case, we have 8 matrices of 2 rows by 2 columns as result.
-    # And the resulting shape should be (2 (image rows), 4 (image columns), 2 (patch rows), 2 (patch columns))
+    # In this case, we will end up with an array of shape (8, 2, 2),
+    # which corresponds to (image rows * image columns, patch rows, patch columns)
+    # We add patch_rows to `shape` because `as_strided` includes patches that are not fully in the image, e.g.
+
+    # x x x x o
+    # o x x x o
+    # o x x x x
 
     rows, cols = image.shape[:2]
     patch_rows = (rows - patch_size) // stride + 1
@@ -72,10 +102,9 @@ def to_patches(image: np.ndarray, patch_size: int, stride: int) -> Tuple[List[np
     bytes_shift = bytes_patch_cols * stride
 
     patches = as_strided(x=image, shape=shape, strides=(bytes_shift, bytes_patch_rows, bytes_patch_cols))
+    coordinates = list(product(np.arange(2), np.arange(4)))  # [(0, 0), (0, 1), (1, 0), (1, 1)]
 
-    # Remove patches that are not fully in the image, e.g.
-    # x x x x o
-    # o x x x o
-    # o x x x x
+    # Remove patches that are not fully in the image.
+    patches = np.delete(patches, obj=np.arange(patch_cols, patches.shape[0], patch_cols + 1), axis=0)
 
-    patches = np.delete(patches, obj=np.arange(patch_cols, patches.shape[0], patch_cols), axis=0)
+    return patches, coordinates
