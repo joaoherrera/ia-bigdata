@@ -54,7 +54,7 @@ def read_paths(directory_path: str) -> List[str]:
 
 
 def to_patches(image: np.ndarray, patch_size: int, stride: int) -> Tuple[List[np.ndarray], List[Tuple, Tuple]]:
-    """Split an image into patches according to a given patch size and stride. 
+    """Split an image into patches according to a given patch size and stride.
 
     IMPORTANT: `as_strided` returns a view, so modifying the returned array will modify the original array.
     To avoid this, copy the returned array before modifying it.
@@ -102,7 +102,7 @@ def to_patches(image: np.ndarray, patch_size: int, stride: int) -> Tuple[List[np
     bytes_shift = bytes_patch_cols * stride
 
     patches = as_strided(x=image, shape=shape, strides=(bytes_shift, bytes_patch_rows, bytes_patch_cols))
-    coordinates = list(product(np.arange(2), np.arange(4)))  # [(0, 0), (0, 1), (1, 0), (1, 1)]
+    coordinates = list(product(np.arange(2), np.arange(4)))  # [(0, 0), (0, 1), (1, 0), (1, 1), ... ]
 
     # Remove patches that are not fully in the image.
     patches = np.delete(patches, obj=np.arange(patch_cols, patches.shape[0], patch_cols + 1), axis=0)
