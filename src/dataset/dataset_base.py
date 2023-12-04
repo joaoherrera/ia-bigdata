@@ -37,6 +37,7 @@ class BaseDataset(Dataset, ABC):
 
         return self.data
 
+    @abstractmethod
     def __len__(self) -> int:
         """Returns the length of the object.
 
@@ -48,6 +49,7 @@ class BaseDataset(Dataset, ABC):
 
         raise NotImplementedError()
 
+    @abstractmethod
     def __getitem__(self, idx: int) -> Any:
         """Get the item at the specified index.
 
@@ -57,8 +59,8 @@ class BaseDataset(Dataset, ABC):
 
         raise NotImplementedError()
 
-    @classmethod
-    def dataloader(cls, batch_size: int, shuffle: bool) -> DataLoader:
+    @abstractmethod
+    def dataloader(self, batch_size: int, shuffle: bool) -> DataLoader:
         """Class method that returns a DataLoader object.
 
         Args:
@@ -69,7 +71,7 @@ class BaseDataset(Dataset, ABC):
             DataLoader: The DataLoader object.
         """
 
-        return DataLoader(cls, batch_size=batch_size, shuffle=shuffle)
+        raise NotImplementedError()
 
 
 class MutableDataset(BaseDataset, ABC):
