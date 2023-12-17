@@ -3,12 +3,10 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 import os
-from itertools import product
 from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np
-from numpy.lib.stride_tricks import as_strided
 from pycocotools import mask as coco_mask
 
 
@@ -54,12 +52,12 @@ def read_paths(directory_path: str) -> List[str]:
     return os.listdir(directory_path)
 
 
-def generate_instance_mask(image: np.ndarray, annotation: Dict) -> np.ndarray:
+def generate_binary_mask(image: np.ndarray, annotation: Dict) -> np.ndarray:
     """Generate an instance mask for the given annotation.
 
     Args:
         image (np.ndarray): The image array.
-        annotation (Dict): The annotation dictionary.print(annotation["segmentation"].shape)
+        annotation (Dict): A dictionary containing a single annotation.
 
     Returns:
         np.ndarray: The instance mask.
@@ -88,58 +86,37 @@ def generate_instance_mask(image: np.ndarray, annotation: Dict) -> np.ndarray:
     return mask
 
 
-def to_patches(image: np.ndarray, patch_size: int, stride: int) -> Tuple[List[np.ndarray], List[Tuple, Tuple]]:
-    """Split an image into patches according to a given patch size and stride.
-
-    IMPORTANT: `as_strided` returns a view, so modifying the returned array will modify the original array.
-    To avoid this, copy the returned array before modifying it.
+def patch_generator(image: np.ndarray, patch_size: int, stride: int) -> Tuple[np.ndarray, Tuple[int, int]]:
+    """Generate patches from an image using a sliding window approach.
 
     Args:
-        image (np.ndarray): The image to split into patches.
-        patch_size (int): The size of the patches. Only square patches are supported.
-        stride (int): The stride between the patches.
-    Returns:
-        Tuple[List[np.ndarray], List[Tuple, Tuple]]: A tuple containing the list of patches and the list of
-        their coordinates.
+        image (np.ndarray): The input image.
+        patch_size (int): The size of the patches.
+        stride (int): The stride between patches.
+
+    Yields:
+        Tuple[np.ndarray, Tuple[int, int]]: A tuple containing the patch and its coordinates.
+
     Raises:
-        AssertionError: If the patch size or stride are not greater than 0 or if the patch size is greater than
-        the image size.
+        GeneratorExit: Raised when generator is closed.
     """
 
-    assert patch_size > 0, "Patch size must be greater than 0"
-    assert stride > 0, "Stride must be greater than 0"
-    assert patch_size < image.shape[0], "Patch size must be smaller than the image height"
-    assert patch_size < image.shape[1], "Patch size must be smaller than the image width"
-
-    # ~~ Defining the shape of the output array of patches
-    # Consider the following image:
-
-    # o o x x x      x o o x x      x x o o x     x x x o o      x x x x x      x x x x x      x x x x x      x x x x x
-    # o o x x x  ->  x o o x x  ->  x x o o x  -> x x x o o  ->  o o x x x  ->  x o o x x  ->  x x o o x  ->  x x x o o
-    # x x x x x      x x x x x      x x x x x     x x x x x      o o x x x      x o o x x      x x o o x      x x x o o
-
-    # In this case, we will end up with an array of shape (8, 2, 2),
-    # which corresponds to (image rows * image columns, patch rows, patch columns)
-    # We add patch_rows to `shape` because `as_strided` includes patches that are not fully in the image, e.g.
-
-    # x x x x o
-    # o x x x o
-    # o x x x x
-
     rows, cols = image.shape[:2]
-    patch_rows = (rows - patch_size) // stride + 1
-    patch_cols = (cols - patch_size) // stride + 1
-    shape = (patch_rows * patch_cols + patch_rows, patch_size, patch_size)
+    cur_row = 0
+    cur_col = 0
 
-    # ndarray.strides gives us the number of bytes to move in the image to get to the next row or column.
-    bytes_patch_cols = image.strides[1]
-    bytes_patch_rows = image.strides[0]
-    bytes_shift = bytes_patch_cols * stride
+    while cur_row < rows:
+        coord = (cur_row, cur_col)
+        patch = image[cur_row : min(cur_row + patch_size, rows - 1), cur_col : min(cur_col + patch_size, cols - 1)]
 
-    patches = as_strided(x=image, shape=shape, strides=(bytes_shift, bytes_patch_rows, bytes_patch_cols))
-    coordinates = list(product(np.arange(2), np.arange(4)))  # [(0, 0), (0, 1), (1, 0), (1, 1), ... ]
+        if cur_col + patch_size >= cols - 1:
+            previous_was_inside = cur_row - stride + patch_size < rows - 1
 
-    # Remove patches that are not fully in the image.
-    patches = np.delete(patches, obj=np.arange(patch_cols, patches.shape[0], patch_cols + 1), axis=0)
+            cur_row += stride if previous_was_inside else rows  # Force exit if the last patch was not complete
+            cur_col = 0
 
-    return patches, coordinates
+        else:
+            cur_col += stride
+
+        yield patch, coord
+    raise StopIteration()
