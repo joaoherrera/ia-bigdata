@@ -3,12 +3,9 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 import itertools
-import os
 from typing import Dict, List
 
 import pandas as pd
-
-from src.dataset.annotations_coco import COCOAnnotations
 
 
 def to_dataframe(dictionary: Dict) -> pd.DataFrame:
