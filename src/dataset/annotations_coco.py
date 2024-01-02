@@ -74,8 +74,7 @@ class COCOAnnotations(JSONAnnotations):
                 raise ArgumentError("Need a path for a JSON file as output.")
         self.save_file(self, output_path)
 
-    @staticmethod
-    def create_image_instance(id: int, file_name: str, width: int, height: int, **kwargs) -> Dict:
+    def add_image_instance(self, id: int, file_name: str, width: int, height: int, **kwargs) -> Dict:
         """Creates an image annotation instance with the given parameters and optional keyword arguments.
 
         Args:
@@ -94,10 +93,9 @@ class COCOAnnotations(JSONAnnotations):
         for key, value in kwargs.items():
             instance[key] = value
 
-        return instance
+        self.data["images"].append(instance)
 
-    @staticmethod
-    def create_annotation_instance(id: int, image_id: int, category_id: int, bbox: List, **kwargs) -> Dict:
+    def add_annotation_instance(self, id: int, image_id: int, category_id: int, bbox: List, **kwargs) -> Dict:
         """Creates an annotation instance with the given parameters.
 
         Parameters:
@@ -116,10 +114,9 @@ class COCOAnnotations(JSONAnnotations):
         for key, value in kwargs.items():
             instance[key] = value
 
-        return instance
+        self.data["annotations"].append(instance)
 
-    @staticmethod
-    def create_category_instance(id: int, category_name: str, **kwargs) -> Dict:
+    def add_category_instance(self, id: int, category_name: str, **kwargs) -> Dict:
         """Create a category instance with the given id and category name.
 
         Parameters:
@@ -136,4 +133,4 @@ class COCOAnnotations(JSONAnnotations):
         for key, value in kwargs.items():
             instance[key] = value
 
-        return instance
+        self.data["categories"].append(instance)
