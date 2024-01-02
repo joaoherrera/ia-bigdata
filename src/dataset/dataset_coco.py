@@ -7,14 +7,22 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Callable, Tuple
 
+import cv2
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from src.dataset.annotations_coco import COCOAnnotations
 from src.dataset.annotations_utils import to_dict
 from src.dataset.dataset_base import MutableDataset
-from src.dataset.dataset_utils import generate_instance_mask, read_image
+from src.dataset.dataset_utils import (
+    generate_binary_component,
+    generate_binary_mask,
+    generate_category_mask,
+    patch_generator,
+    read_image,
+)
 
 
 @dataclass
@@ -35,7 +43,7 @@ class CocoDataset(MutableDataset):
 
         super().__init__()
 
-        self.tree = COCOAnnotations(self.data_annotation_path, self.balancing_strategy)
+        self.tree = COCOAnnotations(self.data_annotation_path)
         self.preview_dataset()
 
     def dataloader(self, batch_size: int, shuffle: bool) -> DataLoader:
@@ -188,7 +196,7 @@ class CocoDatasetInstanceSegmentation(CocoDataset):
 
         # Generate instance masks for each annotation
         for annotation in annotations:
-            mask = generate_instance_mask(image, annotation)
+            mask = generate_binary_component(image, annotation)
             annotation["mask"] = torch.tensor(mask, dtype=torch.float32)
             annotation["boxes"] = torch.tensor(annotation["bbox"])
 
@@ -203,3 +211,100 @@ class CocoDatasetInstanceSegmentation(CocoDataset):
         """
 
         return len(self.images)
+
+    def extract_patches(self, output_dir: str, patch_size: int, stride: int, min_area: float) -> None:
+        """Extracts patches from images and saves them along with their annotations.
+
+        Args:
+            output_dir (str): The directory where the patches and annotations will be saved.
+            patch_size (int): The size of the patches.
+            stride (int): The stride between patches.
+            min_area (float): The minimum area required for a patch to be considered.
+        """
+
+        # Initialize patch annotations. Categories are the same as the image annotations.
+        patch_annotations = COCOAnnotations.from_dict(
+            {
+                "categories": self.tree.data["categories"],
+                "images": [],
+                "annotations": [],
+            }
+        )
+
+        image_id = 1
+        annotation_id = 1
+        images_output_dir = os.path.join(output_dir, "images")
+        annotations_output_dir = os.path.join(output_dir, "annotations")
+
+        # Create output subdirectories.
+        os.makedirs(images_output_dir, exist_ok=True)
+        os.makedirs(annotations_output_dir, exist_ok=True)
+
+        for image_data in tqdm(self.images):
+            image_path = os.path.join(self.data_directory_path, image_data["file_name"])
+            image_annotations = self.annotations[image_data["id"]]
+
+            image = read_image(image_path)
+
+            # ~~ Draw components on masks based on the image annotations made on CVAT.
+            binary_mask = generate_binary_mask(image, image_annotations)
+            category_mask = generate_category_mask(image, image_annotations)
+            __, component_mask = cv2.connectedComponents(binary_mask)
+
+            # ~~ Extract patches
+            patch_gen = patch_generator(binary_mask, patch_size, stride)
+
+            try:
+                while patch_data := next(patch_gen):
+                    patch, coord = patch_data
+                    patch_basename, ext = os.path.splitext(os.path.basename(image_data["file_name"]))
+                    patch_name = f"{patch_basename}_{str(coord[0])}_{str(coord[1])}{ext}"
+                    patch_rows, patch_cols = patch.shape[0], patch.shape[1]
+
+                    # Crop map to get components inside the patch
+                    patch_map = component_mask[coord[0] : coord[0] + patch_rows, coord[1] : coord[1] + patch_cols]
+
+                    # Ignore patches without any components...
+                    if np.all(patch_map == 0):
+                        continue
+
+                    # ... or with less than min_area
+                    if any([component_size < min_area for component_size in np.bincount(patch_map.flatten())[1:]]):
+                        continue
+
+                    patch_annotations.add_image_instance(image_id, patch_name, patch_rows, patch_cols)
+                    patch_category_mask = category_mask[
+                        coord[0] : coord[0] + patch_rows, coord[1] : coord[1] + patch_cols
+                    ]
+                    patch_image = image[coord[0] : coord[0] + patch_rows, coord[1] : coord[1] + patch_cols]
+
+                    # Extract data for each component and create a new annotation instance.
+                    for label in np.unique(patch_map)[1:]:  # 0 is background
+                        instance_map = np.array(patch_map == label, dtype=np.uint8)
+                        instance_category = patch_category_mask[patch_map == label].max()  # It could also be min().
+                        instance_contours, _ = cv2.findContours(instance_map, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                        instance_bbox = list(cv2.boundingRect(instance_contours[0]))
+
+                        # Now, organize instance segmentation into a list of [x1, y1, x2, y2, x3, y3, ...]
+                        instance_contours = instance_contours[0].reshape(-1, 2).astype(float)
+                        instance_segmentation = [0] * (instance_contours.shape[0] * instance_contours.shape[1])
+                        instance_segmentation[::2] = instance_contours[:, 0]
+                        instance_segmentation[1::2] = instance_contours[:, 1]
+
+                        patch_annotations.add_annotation_instance(
+                            id=annotation_id,
+                            image_id=image_id,
+                            category_id=int(instance_category),
+                            bbox=instance_bbox,
+                            segmentation=[instance_segmentation],
+                        )
+
+                        annotation_id += 1
+
+                    cv2.imwrite(os.path.join(output_dir, "images", patch_name), patch_image)
+                    image_id += 1
+
+            except (RuntimeError, StopIteration):
+                pass
+
+        patch_annotations.save(output_path=os.path.join(output_dir, "annotations", "annotations.json"))
