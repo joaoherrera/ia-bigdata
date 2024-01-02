@@ -52,7 +52,7 @@ def read_paths(directory_path: str) -> List[str]:
     return os.listdir(directory_path)
 
 
-def generate_binary_mask(image: np.ndarray, annotation: Dict) -> np.ndarray:
+def generate_binary_component(image: np.ndarray, annotation: Dict) -> np.ndarray:
     """Generate an instance mask for the given annotation.
 
     Args:
@@ -86,6 +86,47 @@ def generate_binary_mask(image: np.ndarray, annotation: Dict) -> np.ndarray:
     return mask
 
 
+def generate_binary_mask(image: np.ndarray, annotations: Dict) -> np.ndarray:
+    """Generates a binary mask based on the given image and annotations.
+
+    Args:
+        image (np.ndarray): The input image.
+        annotations (Dict): The dictionary containing the annotations.
+
+    Returns:
+        np.ndarray: The binary mask generated from the image and annotations.
+    """
+
+    binary_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+
+    for instance_annotation in annotations:
+        mask = generate_binary_component(image, instance_annotation)
+        binary_mask = np.bitwise_or(binary_mask, mask)
+
+    return binary_mask
+
+
+def generate_category_mask(image: np.ndarray, annotations: Dict) -> np.ndarray:
+    """Generate a category mask based on the given image and annotations. A category mask is a mask that contains 0 as
+    background and the category id as foreground.
+
+    Args:
+        image (np.ndarray): The input image.
+        annotations (Dict): The annotations containing instance information.
+
+    Returns:
+        np.ndarray: The generated category mask.
+
+    """
+    category_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+
+    for instance_annotation in annotations:
+        mask = generate_binary_component(image, instance_annotation)
+        category_mask += mask * instance_annotation["category_id"]
+
+    return category_mask
+
+
 def patch_generator(image: np.ndarray, patch_size: int, stride: int) -> Tuple[np.ndarray, Tuple[int, int]]:
     """Generate patches from an image using a sliding window approach.
 
@@ -112,9 +153,8 @@ def patch_generator(image: np.ndarray, patch_size: int, stride: int) -> Tuple[np
         if cur_col + patch_size >= cols - 1:
             previous_was_inside = cur_row - stride + patch_size < rows - 1
 
-            cur_row += stride if previous_was_inside else rows  # Force exit if the last patch was not complete
+            cur_row += stride if previous_was_inside else rows  # Force exit if the last patch hasn't patch_size rows.
             cur_col = 0
-
         else:
             cur_col += stride
 
