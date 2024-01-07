@@ -80,10 +80,10 @@ Where:
 - OUTPUT_DIRECTORY: Path to the output directory, where the model will be saved.
 - BATCH_SIZE: Size of training and validation batches. Default 16.
 - EPOCHS: Number of epochs. Default 50.
-- LEARNING_RATE: Learning rate. Default 0.001.
-- SEED: A seed for reproducibility. Default 2183648025.
-- preprocess: Whether apply preprocessing algoritms (hardcoded in the train script for now).
-- augment: Whether augment data using Albumentations (check src/dataset/augmentations.py for more details).
-- gpu: Whether use GPU, otherwise CPU.
+- LEARNING_RATE: Learning rate. Defaults to 0.001.
+- SEED: A seed for reproducibility. Defaults to 2183648025.
+- preprocess: Whether to apply preprocessing algorithms (hard-coded in the train script for now).
+- augment: Whether to augment data using Albumentations (check `src/dataset/augmentations.py` for more details).
+- gpu: Whether to use GPU, otherwise CPU.
 
 We also provide a [Jupyter notebook](src/evaluation/evaluation.ipynb) for model evaluation, so one can quickly check quantitative and qualitative metrics as well as export them to a PDF file.
