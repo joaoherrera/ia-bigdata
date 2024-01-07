@@ -3,13 +3,13 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 import os
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np
+from pycocotools import mask as coco_mask
 
 
-@staticmethod
 def read_image(image_path: str, read_mode: int = cv2.IMREAD_COLOR, channel_first: bool = False) -> np.ndarray:
     """Reads an image from the given path.
 
@@ -35,7 +35,6 @@ def read_image(image_path: str, read_mode: int = cv2.IMREAD_COLOR, channel_first
         return image
 
 
-@staticmethod
 def read_paths(directory_path: str) -> List[str]:
     """Read the list of paths in a given directory.
 
@@ -53,13 +52,123 @@ def read_paths(directory_path: str) -> List[str]:
     return os.listdir(directory_path)
 
 
+def generate_binary_component(image: np.ndarray, annotation: Dict) -> np.ndarray:
+    """Generate an instance mask for the given annotation.
+
+    Args:
+        image (np.ndarray): The image array.
+        annotation (Dict): A dictionary containing a single annotation.
+
+    Returns:
+        np.ndarray: The instance mask.
+    """
+
+    # There are some annotations that correspond to a crowd of objects (e.g. crowd of people).
+    # In such cases, the segmentation is not a polygon, but a Run-length Encoding (RLE). A RLE is basicaly composed by
+    # a list of values followed by the number of occurences that this value appears sequentially.
+    # Pycocotools package provides functions to encode and decode RLEs.
+
+    if annotation["iscrowd"] == 1:
+        mask = coco_mask.decode(annotation["segmentation"])
+    else:
+        mask = np.zeros(image.shape[:2], dtype=np.uint8)
+        polygons = np.array(annotation["segmentation"], dtype=object)
+
+        # Sometimes an object can be composed by multiple polygons.
+        if polygons.shape[0] > 1:
+            for polygon in polygons:
+                polygon = np.array(polygon).reshape((-1, 2)).astype(np.int32)
+                mask = cv2.fillPoly(mask, [polygon], color=1)
+        else:
+            polygon = polygons.reshape((-1, 2)).astype(np.int32)
+            mask = cv2.fillPoly(mask, [polygon], color=1)
+
+    return mask
+
+
+def generate_binary_mask(image: np.ndarray, annotations: Dict) -> np.ndarray:
+    """Generates a binary mask based on the given image and annotations.
+
+    Args:
+        image (np.ndarray): The input image.
+        annotations (Dict): The dictionary containing the annotations.
+
+    Returns:
+        np.ndarray: The binary mask generated from the image and annotations.
+    """
+
+    binary_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+
+    for instance_annotation in annotations:
+        mask = generate_binary_component(image, instance_annotation)
+        binary_mask = np.bitwise_or(binary_mask, mask)
+
+    return binary_mask
+
+
+def generate_category_mask(image: np.ndarray, annotations: Dict) -> np.ndarray:
+    """Generate a category mask based on the given image and annotations. A category mask is a mask that contains 0 as
+    background and the category id as foreground.
+
+    Args:
+        image (np.ndarray): The input image.
+        annotations (Dict): The annotations containing instance information.
+
+    Returns:
+        np.ndarray: The generated category mask.
+
+    """
+    category_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+
+    for instance_annotation in annotations:
+        mask = generate_binary_component(image, instance_annotation)
+        category_mask += mask * instance_annotation["category_id"]
+
+    return category_mask
+
+
+def patch_generator(image: np.ndarray, patch_size: int, stride: int) -> Tuple[np.ndarray, Tuple[int, int]]:
+    """Generate patches from an image using a sliding window approach.
+
+    Args:
+        image (np.ndarray): The input image.
+        patch_size (int): The size of the patches.
+        stride (int): The stride between patches.
+
+    Yields:
+        Tuple[np.ndarray, Tuple[int, int]]: A tuple containing the patch and its coordinates.
+
+    Raises:
+        GeneratorExit: Raised when generator is closed.
+    """
+
+    rows, cols = image.shape[:2]
+    cur_row = 0
+    cur_col = 0
+
+    while cur_row < rows:
+        coord = (cur_row, cur_col)
+        patch = image[cur_row : min(cur_row + patch_size, rows - 1), cur_col : min(cur_col + patch_size, cols - 1)]
+
+        if cur_col + patch_size >= cols - 1:
+            previous_was_inside = cur_row - stride + patch_size < rows - 1
+
+            cur_row += stride if previous_was_inside else rows  # Force exit if the last patch hasn't patch_size rows.
+            cur_col = 0
+        else:
+            cur_col += stride
+
+        yield patch, coord
+    raise StopIteration()
+
+
 @staticmethod
 def join_patches(patches: List[np.ndarray], filenames: List[str]) -> np.ndarray:
     """Joins a list of patches into a single image.
 
     Args:
         patches (List[np.ndarray]): The patches to join.
-        filenames (List[str]): The filenames for the patches in the format <name>_x_y.<ext> 
+        filenames (List[str]): The filenames for the patches in the format <name>_x_y.<ext>
         where x and y represent a position of the patch in the original image.
 
     Returns:
@@ -71,7 +180,7 @@ def join_patches(patches: List[np.ndarray], filenames: List[str]) -> np.ndarray:
     """
     if len(patches) == 0:
         raise ValueError("Input list of patches is empty.")
-    
+
     patches = [patch.astype(np.uint8) for patch in patches]
     patches_positions = [x_y_from_filename(filename_from_path(filename)) for filename in filenames]
     result_shape = calculate_result_shape_from_patches(patches, patches_positions)
@@ -79,7 +188,7 @@ def join_patches(patches: List[np.ndarray], filenames: List[str]) -> np.ndarray:
 
     for (init_y, init_x), patch in zip(patches_positions, patches):
         row, col = patch.shape
-        result_image[init_y:init_y + row, init_x:init_x + col] |= patch
+        result_image[init_y : init_y + row, init_x : init_x + col] |= patch
 
     return result_image
 
@@ -117,13 +226,14 @@ def x_y_from_filename(filename: str) -> Tuple[int, int]:
 
     return (x, y)
 
+
 def filename_from_path(path: str) -> str:
     """Extracts filename from a path. Robus enough to receive a filename and
     return if if not a path.
-    
+
     Args:
         path (str): A path to a file.
-        
+
     Returns:
         str: The extracted filename.
     """

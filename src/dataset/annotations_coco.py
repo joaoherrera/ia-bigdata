@@ -3,7 +3,6 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 import os
-import random
 from ctypes import ArgumentError
 from typing import Dict, List
 
@@ -11,7 +10,7 @@ from src.dataset.annotations_base import JSONAnnotations
 
 
 class COCOAnnotations(JSONAnnotations):
-    def __init__(self, filepath: str = None, balancing_strategy: str = None) -> None:
+    def __init__(self, filepath: str = None) -> None:
         """Initializes an instance of the class.
 
         Args:
@@ -23,14 +22,6 @@ class COCOAnnotations(JSONAnnotations):
 
         if self.filepath is not None and os.path.isfile(self.filepath):
             self.load()
-
-        if balancing_strategy is not None:
-            if balancing_strategy == "oversampling":
-                self.apply_oversampling(inplace=True)
-            elif balancing_strategy == "undersampling":
-                self.apply_undersampling(inplace=True)
-            else:
-                raise ArgumentError(f"Invalid balancing strategy: {balancing_strategy}")
 
     @staticmethod
     def from_dict(annotations: Dict) -> "COCOAnnotations":
@@ -83,74 +74,7 @@ class COCOAnnotations(JSONAnnotations):
                 raise ArgumentError("Need a path for a JSON file as output.")
         self.save_file(self, output_path)
 
-    def apply_oversampling(self, inplace=False, seed=None) -> List[Dict] | None:
-        """Apply oversampling to the data. Oversampling is a data augmentation technique that balances
-        the number of annotations in each category by randomly selecting annotations from the
-        same category.
-
-        Parameters:
-            inplace (bool, optional): If True, the oversampled data is added to the existing data.
-                If False, the oversampled data is returned. Defaults to False.
-            seed (int, optional): Seed for the random number generator. Defaults to None.
-
-        Returns:
-            List[Dict] | None: The oversampled data if inplace is False, None otherwise.
-        """
-
-        if seed is not None:
-            random.seed(seed)
-
-        oversampled = []
-
-        annotations_category = self.to_dict(self.data["annotations"], "category_id")
-        categories_summary = {id: len(anns) for id, anns in annotations_category.items()}
-        categories_max = max(categories_summary.values())
-
-        for category_id, n_annotations in categories_summary.items():
-            if n_annotations < categories_max:
-                n_random = random.choices(annotations_category[category_id], k=(categories_max - n_annotations))
-                oversampled.extend(n_random)
-
-        if inplace:
-            self.data["annotations"].extend(oversampled)
-        else:
-            return oversampled
-
-    def apply_undersampling(self, inplace=False, seed=None) -> List[Dict] | None:
-        """Apply undersampling to the dataset. Undersampling is a data augmentation technique that balances the
-        number of annotations in each category by randomly selecting annotations from the same category
-        and removing them.
-
-        Args:
-            inplace (bool, optional): If True, the undersampled annotations will be added to the existing dataset.
-                If False, the undersampled annotations will be returned. Defaults to False.
-            seed (int, optional): The seed value for the random number generator. Defaults to None.
-
-        Returns:
-            List[Dict] | None: The undersampled annotations if inplace is False, otherwise None.
-        """
-
-        if seed is not None:
-            random.seed(seed)
-
-        undersampled = []
-
-        annotations_category = self.to_dict(self.data["annotations"], "category_id")
-        categories_summary = {id: len(anns) for id, anns in annotations_category.items()}
-        categories_min = min(categories_summary.values())
-
-        for category_id, n_annotations in categories_summary.items():
-            if n_annotations > categories_min:
-                n_random = random.choices(annotations_category[category_id], k=(n_annotations - categories_min))
-                undersampled.extend(n_random)
-
-        if inplace:
-            self.data["annotations"].extend(undersampled)
-        else:
-            return undersampled
-
-    @staticmethod
-    def create_image_instance(id: int, file_name: str, width: int, height: int, **kwargs) -> Dict:
+    def add_image_instance(self, id: int, file_name: str, width: int, height: int, **kwargs) -> Dict:
         """Creates an image annotation instance with the given parameters and optional keyword arguments.
 
         Args:
@@ -169,10 +93,9 @@ class COCOAnnotations(JSONAnnotations):
         for key, value in kwargs.items():
             instance[key] = value
 
-        return instance
+        self.data["images"].append(instance)
 
-    @staticmethod
-    def create_annotation_instance(id: int, image_id: int, category_id: int, bbox: List, **kwargs) -> Dict:
+    def add_annotation_instance(self, id: int, image_id: int, category_id: int, bbox: List, **kwargs) -> Dict:
         """Creates an annotation instance with the given parameters.
 
         Parameters:
@@ -191,10 +114,9 @@ class COCOAnnotations(JSONAnnotations):
         for key, value in kwargs.items():
             instance[key] = value
 
-        return instance
+        self.data["annotations"].append(instance)
 
-    @staticmethod
-    def create_category_instance(id: int, category_name: str, **kwargs) -> Dict:
+    def add_category_instance(self, id: int, category_name: str, **kwargs) -> Dict:
         """Create a category instance with the given id and category name.
 
         Parameters:
@@ -211,4 +133,4 @@ class COCOAnnotations(JSONAnnotations):
         for key, value in kwargs.items():
             instance[key] = value
 
-        return instance
+        self.data["categories"].append(instance)

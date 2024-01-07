@@ -56,14 +56,19 @@ Training a Deep Learning model for a given computer vision task is taken care of
 [train.py](src/training/train.py). It can be executed as follows:
 
 ```shell
-python train.py \
+python src.training.train \
     --training-images <TRAINING_IMAGES_DIRECTORY> \
     --training-annotations <TRAINING_ANNOTATIONS_PATH> \
     --validation-images <VALIDATION_IMAGES_DIRECTORY> \
     --validation-annotations <VALIDATION_ANNOTATIONS_PATH> \
     --output-path <OUTPUT_DIRECTORY> \
     --batch-size <BATCH_SIZE> \
-    --epochs <EPOCHS> 
+    --epochs <EPOCHS> \
+    --learning-rate <LEARNING_RATE> \
+    --seed <SEED> \
+    <--preprocess> \
+    <--augment> \
+    <--gpu> 
 ```
 
 Where:
@@ -75,5 +80,10 @@ Where:
 - OUTPUT_DIRECTORY: Path to the output directory, where the model will be saved.
 - BATCH_SIZE: Size of training and validation batches. Default 16.
 - EPOCHS: Number of epochs. Default 50.
+- LEARNING_RATE: Learning rate. Defaults to 0.001.
+- SEED: A seed for reproducibility. Defaults to 2183648025.
+- preprocess: Whether to apply preprocessing algorithms (hard-coded in the train script for now).
+- augment: Whether to augment data using Albumentations (check `src/dataset/augmentations.py` for more details).
+- gpu: Whether to use GPU, otherwise CPU.
 
 We also provide a [Jupyter notebook](src/evaluation/evaluation.ipynb) for model evaluation, so one can quickly check quantitative and qualitative metrics as well as export them to a PDF file.

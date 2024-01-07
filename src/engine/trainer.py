@@ -11,19 +11,25 @@ from src.training.tensorboard import TrainingRecorder
 
 
 class SupervisedTrainer:
-    def __init__(self, device: str, model: torch.nn.Module, recorder: TrainingRecorder = None):
+    def __init__(self, device: str, model: torch.nn.Module, recorder: TrainingRecorder = None, seed: int = None):
         """Class constructor. Initializes the trainer module for supervised learning.
 
         Args:
             device (str): The device to use for training (e.g., 'cuda' or 'cpu').
             model (torch.nn.Module): The model to be trained.
             recorder (TrainingRecorder, optional): A training recorder to track training progress. Defaults to None.
+            seed (int, optional): The seed to use for reproducibility. Defaults to None.
         """
 
         self.device = device
         self.model = model
         self.recorder = recorder  # Tensorboard recorder to track training progress.
         self.best_loss = 1e20  # Set to a large value, so that the first validation loss is always better.
+
+        if seed is not None:
+            torch.manual_seed(seed)  # CPU
+            if self.device == "cuda":
+                torch.cuda.manual_seed_all(seed)  # GPU
 
         self.model.to(self.device)  # Load model in the GPU
 
@@ -48,13 +54,13 @@ class SupervisedTrainer:
         with torch.set_grad_enabled(True):
             for n, batch in enumerate(dataset):
                 x_pred, y_true = batch
-                x_pred, y_true = x_pred.to(self.device), y_true.to(self.device)
+                x_pred = x_pred.to(self.device)
 
                 # Zero gradients for each batch
                 optimizer.zero_grad()
 
                 # Predict
-                y_pred = self.model(x_pred)
+                y_pred = self.model(x_pred, y_true)
 
                 # Loss computation and weights correction
                 loss = loss_func(y_pred, y_true)

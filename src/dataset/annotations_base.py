@@ -10,8 +10,6 @@ from typing import Any, Dict
 
 import xmltodict
 
-from dataset.annotations_coco import COCOAnnotations
-
 
 class AnnotationsBase(ABC):
     @staticmethod
@@ -59,11 +57,11 @@ class JSONAnnotations(AnnotationsBase):
             return None
 
     @staticmethod
-    def save_file(annotations: "COCOAnnotations", file_path: str) -> None:
+    def save_file(annotations: Any, file_path: str) -> None:
         """Save the annotations data to a JSON file.
 
         Args:
-            annotations (COCOAnnotations): The annotations to be saved.
+            annotations (Any): The annotations to be saved.
             file_path (str): The path of the file to save the annotations to.
         """
 
