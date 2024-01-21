@@ -2,6 +2,7 @@
 # A COCO dataset class that should be used with PyTorch.                                                              #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
+import math
 import os
 from copy import deepcopy
 from dataclasses import dataclass
@@ -250,9 +251,12 @@ class CocoDatasetInstanceSegmentation(CocoDataset):
 
             image = read_image(image_path)
 
+            # ~~ Extend mask dimensions to match with patch_size and stride values.
+            extended_image = np.zeros(extended_dimensions(patch_size, stride, image.shape))
+
             # ~~ Draw components on masks based on the image annotations made on CVAT.
-            binary_mask = generate_binary_mask(image, image_annotations)
-            category_mask = generate_category_mask(image, image_annotations)
+            binary_mask = generate_binary_mask(extended_image, image_annotations)
+            category_mask = generate_category_mask(extended_image, image_annotations)
             __, component_mask = cv2.connectedComponents(binary_mask)
 
             # ~~ Extract patches
@@ -301,6 +305,7 @@ class CocoDatasetInstanceSegmentation(CocoDataset):
                             category_id=int(instance_category),
                             bbox=instance_bbox,
                             segmentation=[instance_segmentation],
+                            iscrowd=0,
                         )
 
                         annotation_id += 1
@@ -312,3 +317,38 @@ class CocoDatasetInstanceSegmentation(CocoDataset):
                 pass
 
         patch_annotations.save(output_path=os.path.join(output_dir, "annotations", "annotations.json"))
+
+
+def extended_dimensions(patch_size: int, stride: int, image_shape: Tuple[int, ...]) -> Tuple[int, ...]:
+    # TODO test cases with strides greater than patch_size
+    return [image_shape[i] if (image_shape[i] - patch_size) % stride == 0 
+                  else (((image_shape[i] // stride) * stride) + patch_size)
+                  for i in range(len(image_shape))]
+
+    # L = 9; P = 3; S = 4
+    # o o o o X X X X X  X X X o o o o X X  X X X X X X o o o o
+    # o o o o X X X X X  X X X o o o o X X  X X X X X X o o o o
+    # o o o o X X X X X  X X X o o o o X X  X X X X X X o o o o
+    # o o o o X X X X X  X X X o o o o X X  X X X X X X o o o o
+    # X X X X X X X X X  X X X X X X X X X  X X X X X X X X X 
+    # Need to add 1 column.
+
+    # L = 11; P = 4; S = 3
+    # o o o o X X X X X X X  X X X o o o o X X X X  X X X X X X o o o o X  X X X X X X X X X o o o o
+    # o o o o X X X X X X X  X X X o o o o X X X X  X X X X X X o o o o X  X X X X X X X X X o o o o
+    # o o o o X X X X X X X  X X X o o o o X X X X  X X X X X X o o o o X  X X X X X X X X X o o o o
+    # o o o o X X X X X X X  X X X o o o o X X X X  X X X X X X o o o o X  X X X X X X X X X o o o o
+    # X X X X X X X X X X X  X X X X X X X X X X X  X X X X X X X X X X X  X X X X X X X X X X X
+    # Need to add 2 columns.
+
+    # L = 10; P = 4; S = 2
+    # o o o o X X X X X X  X X o o o o X X X X  X X X X o o o o X X  X X X X X X o o o o
+    # o o o o X X X X X X  X X o o o o X X X X  X X X X o o o o X X  X X X X X X o o o o
+    # o o o o X X X X X X  X X o o o o X X X X  X X X X o o o o X X  X X X X X X o o o o
+    # o o o o X X X X X X  X X o o o o X X X X  X X X X o o o o X X  X X X X X X o o o o
+    # X X X X X X X X X X  X X X X X X X X X X  X X X X X X X X X X  X X X X X X X X X X
+    # No need to add columns
+
+    # L = 9; P = 3; S = 2
+    # o o o X X X X X X  X X o o o X X X X  X X X X o o o X X  X X X X o o o X X  X X X X X X o o o
+    # No need to add columns
